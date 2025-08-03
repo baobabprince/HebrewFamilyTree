@@ -3,6 +3,7 @@ import io
 import json
 import logging
 from google.oauth2.credentials import Credentials
+from google.oauth2 import service_account
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
@@ -28,24 +29,8 @@ def get_drive_service():
             credentials_json = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
             if credentials_json:
                 try:
-                    # Assuming credentials_json is the content of credentials.json
-                    # For service account, you might need to parse it and use 
-                    # google.oauth2.service_account.Credentials.from_service_account_info
-                    # For now, let's assume it's a path to the file or direct JSON content
-                    # If it's a path, load from file. If it's content, load from string.
-                    if os.path.exists(credentials_json):
-                        flow = InstalledAppFlow.from_client_secrets_file(credentials_json, SCOPES)
-                    else:
-                        # Attempt to load from string content if not a file path
-                        # This part might need adjustment based on actual credential format
-                        credentials_info = json.loads(credentials_json)
-                        # This is a simplified approach. Real world might need more robust handling
-                        # for different types of credentials (e.g., service account vs. OAuth client)
-                        # For service accounts, you'd typically use:
-                        # from google.oauth2 import service_account
-                        # creds = service_account.Credentials.from_service_account_info(credentials_info, scopes=SCOPES)
-                        raise ValueError("Direct JSON content for GOOGLE_APPLICATION_CREDENTIALS not fully supported yet for OAuth flow.")
-                    creds = flow.run_local_server(port=0)
+                    credentials_info = json.loads(credentials_json)
+                    creds = service_account.Credentials.from_service_account_info(credentials_info, scopes=SCOPES)
                 except Exception as e:
                     logging.error(f"Error loading credentials from GOOGLE_APPLICATION_CREDENTIALS: {e}")
                     return None
