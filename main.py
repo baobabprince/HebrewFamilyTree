@@ -34,7 +34,7 @@ if __name__ == "__main__":
 
     if processed_data_rows:
         today_gregorian = date.today()
-        hebrew_week_dates_map = get_hebrew_date_range_api(today_gregorian, 8) # This was the original value
+        hebrew_week_dates_map = get_hebrew_date_range_api(today_gregorian, 30)
 
         relevant_upcoming_dates = find_relevant_hebrew_dates(
             processed_data_rows, hebrew_week_dates_map
