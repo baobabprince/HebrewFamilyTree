@@ -1,0 +1,51 @@
+name: Calculate Distances and Create Issue
+
+on:
+  workflow_dispatch:
+    inputs:
+      person_id:
+        description: 'GEDCOM ID of the person to calculate distances from (e.g., @I1@)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  calculate-and-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Fix GEDCOM file
+        run: python fix_gedcom.py
+
+      - name: Calculate distances
+        env:
+          PERSONID: ${{ github.event.inputs.person_id }}
+        run: python calculate_distance.py
+
+      - name: Generate issue content
+        id: generate_content
+        env:
+          PERSONID: ${{ github.event.inputs.person_id }}
+        run: python generate_issue_content.py >> $GITHUB_OUTPUT
+
+      - name: Create issue
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_TITLE: ${{ steps.generate_content.outputs.ISSUE_TITLE }}
+          ISSUE_BODY: ${{ steps.generate_content.outputs.ISSUE_BODY }}
+        run: |
+          echo "Creating GitHub Issue..."
+          gh issue create --title "$ISSUE_TITLE" --body "$ISSUE_BODY" --repo ${{ github.repository }}
