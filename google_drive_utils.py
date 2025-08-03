@@ -25,7 +25,6 @@ def get_drive_service():
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            # Use environment variable for credentials in GitHub Actions
             credentials_json = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
             if credentials_json:
                 try:
@@ -37,9 +36,6 @@ def get_drive_service():
             else:
                 logging.error("GOOGLE_APPLICATION_CREDENTIALS environment variable not set and token.json not found.")
                 return None
-        # Save the credentials for the next run
-        with open('token.json', 'w') as token:
-            token.write(creds.to_json())
     
     try:
         service = build('drive', 'v3', credentials=creds)
