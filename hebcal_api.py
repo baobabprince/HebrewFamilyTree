@@ -70,6 +70,7 @@ def find_relevant_hebrew_dates(processed_gedcom_rows, target_hebrew_dates_map):
     Returns a list of tuples: (gregorian_date, original_date_str, name, event_type)
     """
     relevant_dates = []
+    logging.debug(f"Target Hebrew dates map: {target_hebrew_dates_map}")
     for original_date_str_parsed, name, event_type in processed_gedcom_rows:
         logging.debug(f"Processing GEDCOM date: {original_date_str_parsed}")
         parts = original_date_str_parsed.replace('ב',' ').split()
