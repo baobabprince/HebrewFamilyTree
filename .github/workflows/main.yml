@@ -38,8 +38,8 @@ jobs:
         if: steps.process_gedcom.outputs.has_relevant_dates == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ISSUE_TITLE: ${{ fromJson(steps.process_gedcom.outputs.issue_title) }}
-          ISSUE_BODY: ${{ fromJson(steps.process_gedcom.outputs.issue_body) }}
+          ISSUE_TITLE: ${{ steps.process_gedcom.outputs.issue_title }}
+          ISSUE_BODY: ${{ steps.process_gedcom.outputs.issue_body }}
         run: |
           echo "Relevant upcoming dates found. Creating GitHub Issue..."
           gh issue create --title "$ISSUE_TITLE" --repo ${{ github.repository }} --body "$ISSUE_BODY" --assignee "${{ github.actor }}"
