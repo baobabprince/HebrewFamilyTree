@@ -81,7 +81,7 @@ def find_relevant_hebrew_dates(processed_gedcom_rows, target_hebrew_dates_map):
         day_str = parts[0]
         month_str = parts[1]
 
-        day = next((d for d, s in HEBREW_DAY_TO_NUM.items() if s == day_str), None)
+        day = HEBREW_DAY_TO_NUM.get(day_str)
         if day is None:
             try:
                 day = int(day_str)
