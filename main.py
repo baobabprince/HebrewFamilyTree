@@ -23,10 +23,11 @@ from hebcal_api import get_hebrew_date_range_api, find_relevant_hebrew_dates, ge
 from gedcom_graph import build_graph, distance_and_path
 # ------------------------------------------------------------------ logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[logging.FileHandler("app.log"), logging.StreamHandler()]
 )
+logging.getLogger().setLevel(logging.DEBUG)
 
 # ------------------------------------------------------------------ helpers
 def build_issue_body(enriched_list, id2name, today_gregorian):
@@ -71,8 +72,15 @@ def main():
     logging.info("Step 2: Fixing GEDCOM format …")
     fix_gedcom_format(INPUT_GEDCOM_FILE, FIXED_GEDCOM_FILE)
 
+    # Print the content of the fixed GEDCOM file for debugging
+    logging.debug(f"Content of {FIXED_GEDCOM_FILE}:")
+    with open(FIXED_GEDCOM_FILE, 'r', encoding='utf-8') as f:
+        logging.debug(f.read())
+
     logging.info("Step 3: Processing GEDCOM …")
     processed_rows = process_gedcom_file(FIXED_GEDCOM_FILE, OUTPUT_CSV_FILE)
+    logging.debug(f"Processed rows from GEDCOM: {processed_rows}")
+
     if not processed_rows:
         logging.info("No events found in GEDCOM.")
         return

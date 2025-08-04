@@ -2,6 +2,7 @@ import os
 import io
 import json
 import logging
+import shutil
 from google.oauth2.credentials import Credentials
 from google.oauth2 import service_account
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -15,12 +16,9 @@ SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
 
 def get_drive_service():
     creds = None
-    # The file token.json stores the user's access and refresh tokens, and is
-    # created automatically when the authorization flow completes for the first
-    # time.
     if os.path.exists('token.json'):
         creds = Credentials.from_authorized_user_file('token.json', SCOPES)
-    # If there are no (valid) credentials available, let the user log in.
+    
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
@@ -34,7 +32,7 @@ def get_drive_service():
                     logging.error(f"Error loading credentials from GOOGLE_APPLICATION_CREDENTIALS: {e}")
                     return None
             else:
-                logging.error("GOOGLE_APPLICATION_CREDENTIALS environment variable not set and token.json not found.")
+                logging.info("GOOGLE_APPLICATION_CREDENTIALS not set. Falling back to local file.")
                 return None
     
     try:
@@ -45,12 +43,16 @@ def get_drive_service():
         return None
 
 def download_gedcom_from_drive(file_id, destination_path):
-    """
-    Downloads a file from Google Drive.
-    """
     service = get_drive_service()
     if not service:
-        return False
+        if os.path.exists('tree.ged'):
+            if os.path.abspath('tree.ged') != os.path.abspath(destination_path):
+                shutil.copy('tree.ged', destination_path)
+            logging.info(f"Using local GEDCOM file: tree.ged")
+            return True
+        else:
+            logging.error("Local GEDCOM file 'tree.ged' not found.")
+            return False
 
     try:
         request = service.files().get_media(fileId=file_id)

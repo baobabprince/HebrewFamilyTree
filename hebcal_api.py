@@ -27,7 +27,7 @@ def get_hebrew_date_from_api(gregorian_date_obj):
         
         if "hm" in data and "hd" in data:
             hebrew_month_name = data["hm"]
-            hebrew_day = data["hd"]
+            hebrew_day = int(data["hd"])
 
             hebrew_month_num = HEBCAL_FULL_MONTH_NAMES_TO_NUM.get(hebrew_month_name)
             
@@ -62,6 +62,7 @@ def get_hebrew_date_range_api(start_gregorian_date, num_days):
             hebrew_dates_map[hebrew_date_tuple] = current_gregorian
         else:
             logging.warning(f"Could not get Hebrew date for {current_gregorian}, skipping this day.")
+    logging.debug(f"Populated hebrew_dates_map: {hebrew_dates_map}")
     return hebrew_dates_map
 
 def find_relevant_hebrew_dates(processed_gedcom_rows, target_hebrew_dates_map):
@@ -70,10 +71,10 @@ def find_relevant_hebrew_dates(processed_gedcom_rows, target_hebrew_dates_map):
     Returns a list of tuples: (gregorian_date, original_date_str, name, event_type)
     """
     relevant_dates = []
-    logging.debug(f"Target Hebrew dates map: {target_hebrew_dates_map}")
+    logging.debug(f"Target Hebrew dates map (keys): {target_hebrew_dates_map.keys()}")
     for original_date_str_parsed, name, event_type in processed_gedcom_rows:
         logging.debug(f"Processing GEDCOM date: {original_date_str_parsed}")
-        parts = original_date_str_parsed.replace('ב',' ').split()
+        parts = original_date_str_parsed.split()
         if len(parts) < 2:
             logging.debug(f"Skipping invalid date format: {original_date_str_parsed}")
             continue
@@ -101,7 +102,7 @@ def find_relevant_hebrew_dates(processed_gedcom_rows, target_hebrew_dates_map):
             logging.info(f"Found relevant date: {original_date_str_parsed} ({name} - {event_type}) matches {gregorian_date}")
             relevant_dates.append((gregorian_date, original_date_str_parsed, name, event_type))
         else:
-            logging.debug(f"Hebrew date {hebrew_date_tuple} not found in target map.")
+            logging.debug(f"Hebrew date {hebrew_date_tuple} not found in target map. Target map keys: {target_hebrew_dates_map.keys()}")
     return relevant_dates
 
 def get_parasha_for_week(start_date):
