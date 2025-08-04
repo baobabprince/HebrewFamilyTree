@@ -2,14 +2,14 @@ import re
 import csv
 import logging
 from gedcom.parser import Parser
-from constants import HEBREW_MONTHS_MAP, HEBREW_EVENT_NAMES, HEBREW_MONTH_NAMES_FULL
+from constants import HEBREW_MONTHS_MAP, HEBREW_EVENT_NAMES, HEBREW_MONTH_NAMES_FULL, HEBREW_DAY_TO_NUM, HEBREW_MONTH_NAMES_TO_NUM
 
 def get_hebrew_day_string(day):
     """Converts a day number to its Hebrew letter representation."""
     hebrew_numerals = {
         1: "א", 2: "ב", 3: "ג", 4: "ד", 5: "ה", 6: "ו", 7: "ז", 8: "ח", 9: "ט", 10: "י",
         11: "יא", 12: "יב", 13: "יג", 14: "יד", 15: "טו", 16: "טז", 17: "יז", 18: "יח", 19: "יט",
-        20: "כ", 21: "כב", 22: "כג", 24: "כד", 25: "כה", 26: "כו", 27: "כז", 28: "כח", 29: "כט", 30: "ל"
+        20: "כ", 21: "כא", 22: "כב", 23: "כג", 24: "כד", 25: "כה", 26: "כו", 27: "כז", 28: "כח", 29: "כט", 30: "ל"
     }
     return hebrew_numerals.get(day, str(day))
 
@@ -101,51 +101,63 @@ def process_event(event_element, name, dates, event_type=None):
         if child.get_tag() == "DATE":
             date_str = child.get_value()
 
+            logging.debug(f"date_str: {date_str}")
             if not date_str:
+                logging.debug("date_str is empty.")
                 continue
 
-            if not date_str.startswith("@#DHEBREW@"):
+            if date_str.startswith("@#DHEBREW@"):
+                parsing_date_str = date_str[10:].strip()
+                logging.debug(f"parsing_date_str (Hebrew): {parsing_date_str}")
+            else:
+                # If it's not a Hebrew date, we can skip it for now, or process it if no Hebrew date is found.
+                # For this fix, we prioritize Hebrew dates.
                 continue
-
-            parsing_date_str = date_str[10:].strip()
             
             if not parsing_date_str:
+                logging.debug("parsing_date_str is empty.")
                 continue
 
             temp_date_parts = list(parsing_date_str.split())
+            logging.debug(f"temp_date_parts: {temp_date_parts}")
             
             if not temp_date_parts:
+                logging.debug("temp_date_parts is empty.")
                 continue
             
             if temp_date_parts[0].upper() in ['BET', 'ABT', 'EST', 'CAL', 'FROM', 'TO', 'INT', 'AFT', 'BEF']:
+                logging.debug(f"Skipping date due to qualifier: {temp_date_parts[0]}")
                 temp_date_parts = temp_date_parts[1:]
                 if not temp_date_parts:
+                    logging.debug("temp_date_parts empty after removing qualifier.")
                     continue
             
             if 'AND' in [dp.upper() for dp in temp_date_parts]:
+                logging.debug(f"Skipping date due to 'AND' keyword: {temp_date_parts}")
                 try:
                     and_index = [dp.upper() for dp in temp_date_parts].index('AND')
                     temp_date_parts = temp_date_parts[:and_index]
                     if not temp_date_parts:
+                        logging.debug("temp_date_parts empty after removing AND.")
                         continue
                 except ValueError:
                     pass
 
-            hebrew_numerals_reverse = {
-                "א": 1, "ב": 2, "ג": 3, "ד": 4, "ה": 5, "ו": 6, "ז": 7, "ח": 8, "ט": 9, "י": 10,
-                "יא": 11, "יב": 12, "יג": 13, "יד": 14, "טו": 15, "טז": 16, "יז": 17, "יח": 18, "יט": 19,
-                "כ": 20, "כא": 21, "כב": 22, "כג": 23, "כד": 24, "כה": 25, "כו": 26, "כז": 27, "כח": 28, "כט": 29, "ל": 30
-            }
-
             day = 1
-            month_abbr = None
+            month_name = None
 
             if len(temp_date_parts) >= 2:
                 day_str = temp_date_parts[0].replace('"', '').strip()
-                if day_str.isdigit():
-                    day_candidate = int(day_str)
-                else:
-                    day_candidate = hebrew_numerals_reverse.get(day_str, 1) # Default to 1 if not found
+                logging.debug(f"day_str: {day_str}")
+                day_candidate = HEBREW_DAY_TO_NUM.get(day_str)
+                logging.debug(f"day_candidate from HEBREW_DAY_TO_NUM: {day_candidate}")
+                if day_candidate is None:
+                    try:
+                        day_candidate = int(day_str)
+                        logging.debug(f"day_candidate parsed as int: {day_candidate}")
+                    except ValueError:
+                        logging.debug(f"Could not parse day from: {day_str}")
+                        day_candidate = 1 # Default to 1 if not found
 
                 month_abbr_candidate = temp_date_parts[1].upper()
                 if month_abbr_candidate in HEBREW_MONTHS_MAP:
@@ -156,18 +168,18 @@ def process_event(event_element, name, dates, event_type=None):
                 if month_abbr_candidate in HEBREW_MONTHS_MAP:
                     month_abbr = month_abbr_candidate
             
+            logging.debug(f"Final month_abbr: {month_abbr}")
             if month_abbr and month_abbr in HEBREW_MONTHS_MAP:
                 month_num = HEBREW_MONTHS_MAP[month_abbr]
                 event_tag_name = event_type or event_element.get_tag()
                 
-                hebrew_day_str = get_hebrew_day_string(day)
                 hebrew_month_name = HEBREW_MONTH_NAMES_FULL.get(month_num, "")
-                hebrew_date_formatted = f"{hebrew_day_str} {hebrew_month_name}"
+                hebrew_date_formatted = f"{get_hebrew_day_string(day)} {hebrew_month_name}"
 
+                logging.debug(f"Appending date: month_num={month_num}, day={day}, hebrew_date_formatted='{hebrew_date_formatted}', name='{name}', event_tag_name='{event_tag_name}'")
                 dates.append((month_num, day, hebrew_date_formatted, f"{name} - {event_tag_name}: {hebrew_date_formatted}"))
-            
-            break
-
+            else:
+                logging.debug(f"Month abbreviation '{month_abbr}' not found in HEBREW_MONTHS_MAP.")
 try:
     from gedcom.parser import Parser
 except ImportError:
@@ -227,4 +239,5 @@ def process_gedcom_file(file_path, output_csv_file):
         csv_writer.writerows(csv_data_rows)
     
     logging.info(f"Data successfully written to {output_csv_file}")
+    logging.debug(f"Dates list before returning: {dates}")
     return csv_data_rows

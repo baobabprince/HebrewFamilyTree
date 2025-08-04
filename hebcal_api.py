@@ -3,6 +3,7 @@ import json
 import requests
 import logging
 from constants import HEBCAL_API_BASE_URL, HEBCAL_FULL_MONTH_NAMES_TO_NUM, HEBREW_MONTHS_MAP, HEBREW_DAY_TO_NUM, HEBREW_MONTH_NAMES_TO_NUM
+from convertdate import hebrew
 
 def get_hebrew_date_from_api(gregorian_date_obj):
     """
@@ -64,6 +65,8 @@ def get_hebrew_date_range_api(start_gregorian_date, num_days):
             logging.warning(f"Could not get Hebrew date for {current_gregorian}, skipping this day.")
     logging.debug(f"Populated hebrew_dates_map: {hebrew_dates_map}")
     return hebrew_dates_map
+
+
 
 def find_relevant_hebrew_dates(processed_gedcom_rows, target_hebrew_dates_map):
     """

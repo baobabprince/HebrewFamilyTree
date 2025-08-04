@@ -89,9 +89,6 @@ def main():
     hebrew_week_dates_map = get_hebrew_date_range_api(today_gregorian, 7)
 
     relevant_upcoming_dates = find_relevant_hebrew_dates(processed_rows, hebrew_week_dates_map)
-    if not relevant_upcoming_dates:
-        logging.info("No relevant upcoming Hebrew dates in the next 7 days.")
-        return
 
     # ---------- build graph for distance / path ----------
     G, id2name = build_graph(FIXED_GEDCOM_FILE)
@@ -129,6 +126,11 @@ def main():
         logging.warning("GITHUB_OUTPUT not set – skipping workflow outputs.")
 
     logging.info("Script finished.")
+
+# ------------------------------------------------------------------ entrypoint
+if __name__ == "__main__":
+    main()
+    
 
 # ------------------------------------------------------------------ entrypoint
 if __name__ == "__main__":
