@@ -28,6 +28,9 @@ jobs:
       - name: Install GitHub CLI
         run: sudo apt-get install gh -y
 
+      - name: Debug - List Environment Variables
+        run: env
+
       - name: Run main processing script
         id: process_gedcom
         run: python main.py
