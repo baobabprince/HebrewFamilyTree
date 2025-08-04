@@ -117,21 +117,14 @@ def main():
     github_output_path = os.getenv("GITHUB_OUTPUT")
     if github_output_path:
         with open(github_output_path, "a", encoding="utf-8") as fh:
-            print(f"issue_title={issue_title}", file=fh)
-            print("issue_body<<EOF", file=fh)
-            print(issue_body, file=fh)
-            print("EOF", file=fh)
-            print("has_relevant_dates=true", file=fh)
+            fh.write(f"issue_title={issue_title}\n")
+            fh.write("issue_body<<EOF\n")
+            fh.write(issue_body)
+            fh.write("\nEOF\n")
+            fh.write("has_relevant_dates=true\n")
     else:
         logging.warning("GITHUB_OUTPUT not set – skipping workflow outputs.")
 
     logging.info("Script finished.")
 
-# ------------------------------------------------------------------ entrypoint
-if __name__ == "__main__":
-    main()
     
-
-# ------------------------------------------------------------------ entrypoint
-if __name__ == "__main__":
-    main()
