@@ -2,7 +2,7 @@ import os
 import sys
 import csv
 from datetime import date, timedelta
-from convertdate import hebrew
+from hebcal_api import get_hebrew_date_from_api
 from gedcom.parser import Parser
 from gedcom.element.individual import IndividualElement
 from gedcom.element.family import FamilyElement
@@ -12,13 +12,13 @@ from gedcom_utils import get_hebrew_date_from_gedcom_date, get_hebrew_day_string
 
 def get_next_hebrew_dates(num_days=8):
     today_greg = date.today()
-    today_hebrew = hebrew.from_gregorian(today_greg.year, today_greg.month, today_greg.day)
     
     hebrew_dates = []
     for i in range(num_days):
         current_greg = today_greg + timedelta(days=i)
-        current_hebrew = hebrew.from_gregorian(current_greg.year, current_greg.month, current_greg.day)
-        hebrew_dates.append((current_hebrew.day, current_hebrew.month))
+        hebrew_date_tuple = get_hebrew_date_from_api(current_greg)
+        if hebrew_date_tuple:
+            hebrew_dates.append((hebrew_date_tuple[1], hebrew_date_tuple[0]))
     return hebrew_dates
 
 def get_event_details(element, event_tag):
