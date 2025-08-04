@@ -30,10 +30,11 @@ logging.basicConfig(
 logging.getLogger().setLevel(logging.INFO)
 
 # ------------------------------------------------------------------ helpers
-def build_issue_body(enriched_list, id2name, today_gregorian):
+def build_issue_body(enriched_list, id2name, today_gregorian, person_id_from_env):
     """
     enriched_list: list of tuples (distance, path, gregorian_date, heb_date_str, name, event_type)
     id2name      : dict mapping GEDCOM pointer -> display name
+    person_id_from_env: The PERSONID value read from the environment in the main function.
     """
     issue_body = (
         f"## תאריכים עבריים קרובים "
@@ -53,8 +54,7 @@ def build_issue_body(enriched_list, id2name, today_gregorian):
         issue_body += f"* **אדם/משפחה**: `{name}`\n"
 
         # include distance & path only if PERSONID was supplied and distance > 8
-        PERSONID = os.getenv("PERSONID")
-        if PERSONID and dist is not None and dist > LOG_ALL_PATHS_DISTANCE_THRESHOLD:
+        if person_id_from_env and dist is not None and dist > LOG_ALL_PATHS_DISTANCE_THRESHOLD:
             readable_path = " → ".join(id2name.get(p, p) for p in path)
             issue_body += f"* **מרחק**: `{dist}`\n"
             issue_body += f"* **נתיב**: `{readable_path}`\n"
@@ -62,10 +62,9 @@ def build_issue_body(enriched_list, id2name, today_gregorian):
 
     return issue_body
 
+
 # ------------------------------------------------------------------ main
 def main():
-    PERSONID = os.getenv("PERSONID")
-    logging.info(f"PERSONID from environment: {PERSONID}")
     logging.info("Step 1: Downloading GEDCOM from Google Drive …")
     if not download_gedcom_from_drive(GOOGLE_DRIVE_FILE_ID, INPUT_GEDCOM_FILE):
         logging.error("Failed to download GEDCOM. Exiting.")
@@ -114,7 +113,7 @@ def main():
     # ---------- build GitHub issue ----------
     parasha = get_parasha_for_week(today_gregorian)
     issue_title = f"{parasha} - תאריכים עבריים קרובים: {today_gregorian.strftime('%Y-%m-%d')}"
-    issue_body = build_issue_body(enriched, id2name, today_gregorian)
+    issue_body = build_issue_body(enriched, id2name, today_gregorian, PERSONID)
 
     github_output_path = os.getenv("GITHUB_OUTPUT")
     if github_output_path:
