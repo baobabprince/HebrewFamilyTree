@@ -7,7 +7,7 @@ from constants import GOOGLE_DRIVE_FILE_ID, INPUT_GEDCOM_FILE, FIXED_GEDCOM_FILE
 from google_drive_utils import download_gedcom_from_drive
 from gedcom_utils import fix_gedcom_format, process_gedcom_file
 from hebcal_api import get_hebrew_date_range_api, find_relevant_hebrew_dates, get_parasha_for_week
-
+from gedcom_graph import build_graph, distance_and_path
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,

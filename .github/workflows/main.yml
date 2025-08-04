@@ -23,7 +23,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install Python dependencies
-        run: pip install google-api-python-client google-auth-httplib2 google-auth-oauthlib google-auth python-gedcom requests
+        run: pip install google-api-python-client google-auth-httplib2 google-auth-oauthlib google-auth python-gedcom requests networkx
 
       - name: Install GitHub CLI
         run: sudo apt-get install gh -y
