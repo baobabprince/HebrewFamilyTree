@@ -4,6 +4,7 @@ from collections import deque
 from gedcom.parser import Parser
 from gedcom.element.individual import IndividualElement
 from gedcom.element.family import FamilyElement
+from constants import LOG_ALL_PATHS_DISTANCE_THRESHOLD
 
 def build_family_graph(gedcom_file_path):
     parser = Parser()
@@ -161,7 +162,7 @@ if __name__ == "__main__":
             if dist != -1:
                 person_name = get_person_name(individuals_data[indi_id])
                 f.write(f"{person_name} ({indi_id}): {dist}\n")
-                if dist > 6:
+                if dist > LOG_ALL_PATHS_DISTANCE_THRESHOLD:
                     path_details = find_path_with_details(graph, individuals_data, person_id_env, indi_id)
                     if path_details:
                         f.write("    Route:\n")
