@@ -64,6 +64,8 @@ def build_issue_body(enriched_list, id2name, today_gregorian):
 
 # ------------------------------------------------------------------ main
 def main():
+    PERSONID = os.getenv("PERSONID")
+    logging.info(f"PERSONID from environment: {PERSONID}")
     logging.info("Step 1: Downloading GEDCOM from Google Drive …")
     if not download_gedcom_from_drive(GOOGLE_DRIVE_FILE_ID, INPUT_GEDCOM_FILE):
         logging.error("Failed to download GEDCOM. Exiting.")

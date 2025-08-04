@@ -33,6 +33,7 @@ jobs:
         run: python main.py
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+          PERSONID: ${{ secrets.PERSONID }}
 
       - name: Create GitHub Issue for Upcoming Dates
         if: steps.process_gedcom.outputs.has_relevant_dates == 'true'
