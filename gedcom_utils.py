@@ -156,7 +156,7 @@ def process_event(event_element, name, dates, event_type=None):
                 
                 hebrew_day_str = get_hebrew_day_string(day)
                 hebrew_month_name = HEBREW_MONTH_NAMES_FULL.get(month_num, "")
-                hebrew_date_formatted = f"{hebrew_day_str} ב{hebrew_month_name}"
+                hebrew_date_formatted = f"{hebrew_day_str} {hebrew_month_name}"
 
                 dates.append((month_num, day, hebrew_date_formatted, f"{name} - {event_tag_name}: {hebrew_date_formatted}"))
             
