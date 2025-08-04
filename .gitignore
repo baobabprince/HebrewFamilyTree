@@ -1,0 +1,11 @@
+# Ignore files that may contain personal data
+tree.ged
+fixed_tree.ged
+dates.csv
+distances.txt
+geocoded_tree.ged
+app.log
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
