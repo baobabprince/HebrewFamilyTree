@@ -131,20 +131,26 @@ def process_event(event_element, name, dates, event_type=None):
                 except ValueError:
                     pass
 
+            hebrew_numerals_reverse = {
+                "א": 1, "ב": 2, "ג": 3, "ד": 4, "ה": 5, "ו": 6, "ז": 7, "ח": 8, "ט": 9, "י": 10,
+                "יא": 11, "יב": 12, "יג": 13, "יד": 14, "טו": 15, "טז": 16, "יז": 17, "יח": 18, "יט": 19,
+                "כ": 20, "כא": 21, "כב": 22, "כג": 23, "כד": 24, "כה": 25, "כו": 26, "כז": 27, "כח": 28, "כט": 29, "ל": 30
+            }
+
             day = 1
             month_abbr = None
 
             if len(temp_date_parts) >= 2:
-                try:
-                    day_candidate = int(temp_date_parts[0].replace('"', '').strip())
-                    month_abbr_candidate = temp_date_parts[1].upper()
-                    if month_abbr_candidate in HEBREW_MONTHS_MAP:
-                        day = day_candidate
-                        month_abbr = month_abbr_candidate
-                except ValueError:
-                    month_abbr_candidate = temp_date_parts[0].upper()
-                    if month_abbr_candidate in HEBREW_MONTHS_MAP:
-                        month_abbr = month_abbr_candidate
+                day_str = temp_date_parts[0].replace('"', '').strip()
+                if day_str.isdigit():
+                    day_candidate = int(day_str)
+                else:
+                    day_candidate = hebrew_numerals_reverse.get(day_str, 1) # Default to 1 if not found
+
+                month_abbr_candidate = temp_date_parts[1].upper()
+                if month_abbr_candidate in HEBREW_MONTHS_MAP:
+                    day = day_candidate
+                    month_abbr = month_abbr_candidate
             elif len(temp_date_parts) == 1:
                 month_abbr_candidate = temp_date_parts[0].upper()
                 if month_abbr_candidate in HEBREW_MONTHS_MAP:

@@ -8,51 +8,7 @@ from gedcom.element.individual import IndividualElement
 from gedcom.element.family import FamilyElement
 from calculate_distance import build_family_graph, get_person_name, calculate_distances, find_path
 from constants import HEBREW_MONTHS_MAP, HEBREW_EVENT_NAMES, HEBREW_MONTH_NAMES_FULL
-
-def get_hebrew_date_from_gedcom_date(gedcom_date_str):
-    # This function needs to parse the GEDCOM Hebrew date format and return (day, month_num)
-    # Example GEDCOM Hebrew date: "@#DHEBREW@ 15 Sivan 5784"
-    if not gedcom_date_str or not gedcom_date_str.startswith("@#DHEBREW@"):
-        return None
-
-    parts = gedcom_date_str[10:].strip().split()
-    if not parts:
-        return None
-
-    day = 1
-    month_abbr = None
-
-    if len(parts) >= 2:
-        try:
-            day_candidate = int(parts[0].replace('"', '').strip())
-            month_abbr_candidate = parts[1].upper()
-            if month_abbr_candidate in HEBREW_MONTHS_MAP:
-                day = day_candidate
-                month_abbr = month_abbr_candidate
-        except ValueError:
-            month_abbr_candidate = parts[0].upper()
-            if month_abbr_candidate in HEBREW_MONTHS_MAP:
-                month_abbr = month_abbr_candidate
-    elif len(parts) == 1:
-        month_abbr_candidate = parts[0].upper()
-        if month_abbr_candidate in HEBREW_MONTHS_MAP:
-            month_abbr = month_abbr_candidate
-
-    if month_abbr and month_abbr in HEBREW_MONTHS_MAP:
-        month_num = HEBREW_MONTHS_MAP[month_abbr]
-        return day, month_num
-    return None
-
-def get_hebrew_month_name(month_num):
-    return HEBREW_MONTH_NAMES_FULL.get(month_num, "")
-
-def get_hebrew_day_string(day):
-    hebrew_numerals = {
-        1: "א", 2: "ב", 3: "ג", 4: "ד", 5: "ה", 6: "ו", 7: "ז", 8: "ח", 9: "ט", 10: "י",
-        11: "יא", 12: "יב", 13: "יג", 14: "יד", 15: "טו", 16: "טז", 17: "יז", 18: "יח", 19: "יט",
-        20: "כ", 21: "כב", 22: "כג", 24: "כד", 25: "כה", 26: "כו", 27: "כז", 28: "כח", 29: "כט", 30: "ל"
-    }
-    return hebrew_numerals.get(day, str(day))
+from gedcom_utils import get_hebrew_date_from_gedcom_date, get_hebrew_day_string, get_hebrew_month_name
 
 def get_next_hebrew_dates(num_days=8):
     today_greg = date.today()
