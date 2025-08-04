@@ -144,7 +144,7 @@ def process_event(event_element, name, dates, event_type=None):
                     pass
 
             day = 1
-            month_name = None
+            month_abbr = None
 
             if len(temp_date_parts) >= 2:
                 day_str = temp_date_parts[0].replace('"', '').strip()
@@ -168,15 +168,15 @@ def process_event(event_element, name, dates, event_type=None):
                 if month_abbr_candidate in HEBREW_MONTHS_MAP:
                     month_abbr = month_abbr_candidate
             
-            logging.debug(f"Final month_abbr: {month_abbr}")
             if month_abbr and month_abbr in HEBREW_MONTHS_MAP:
+                logging.debug(f"Final month_abbr: {month_abbr}")
                 month_num = HEBREW_MONTHS_MAP[month_abbr]
                 event_tag_name = event_type or event_element.get_tag()
                 
                 hebrew_month_name = HEBREW_MONTH_NAMES_FULL.get(month_num, "")
                 hebrew_date_formatted = f"{get_hebrew_day_string(day)} {hebrew_month_name}"
 
-                logging.debug(f"Appending date: month_num={month_num}, day={day}, hebrew_date_formatted='{hebrew_date_formatted}', name='{name}', event_tag_name='{event_tag_name}'")
+                logging.debug(f"Appending date: month_num={month_num}, day={day}, hebrew_date_formatted='{hebrew_date_formatted}', name='{name}', event_tag_name='{hebrew_date_formatted}'")
                 dates.append((month_num, day, hebrew_date_formatted, f"{name} - {event_tag_name}: {hebrew_date_formatted}"))
             else:
                 logging.debug(f"Month abbreviation '{month_abbr}' not found in HEBREW_MONTHS_MAP.")
