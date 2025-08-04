@@ -19,6 +19,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: List files in repository
+        run: ls -F
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -39,13 +42,14 @@ jobs:
         id: generate_content
         env:
           PERSONID: ${{ github.event.inputs.person_id }}
-        run: python generate_issue_content.py >> $GITHUB_OUTPUT
+        run: |
+          OUTPUT=$(python generate_issue_content.py)
+          echo "ISSUE_TITLE=$(echo "$OUTPUT" | head -n 1)" >> $GITHUB_OUTPUT
+          echo "ISSUE_BODY=$(echo "$OUTPUT" | tail -n +2)" >> $GITHUB_OUTPUT
 
       - name: Create issue
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ISSUE_TITLE: ${{ steps.generate_content.outputs.ISSUE_TITLE }}
-          ISSUE_BODY: ${{ steps.generate_content.outputs.ISSUE_BODY }}
         run: |
           echo "Creating GitHub Issue..."
-          gh issue create --title "$ISSUE_TITLE" --body "$ISSUE_BODY" --repo ${{ github.repository }}
+          gh issue create --title "${{ steps.generate_content.outputs.ISSUE_TITLE }}" --body "${{ steps.generate_content.outputs.ISSUE_BODY }}" --repo ${{ github.repository }}
