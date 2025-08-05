@@ -55,7 +55,7 @@ def build_issue_body(enriched_list, id2name, today_gregorian):
         # include distance & path only if PERSONID was supplied and distance > 8
         PERSONID = os.getenv("PERSONID")
         if PERSONID and dist is not None and dist > 3:
-            readable_path = " → ".join(id2name.get(p, p) for p in path)
+            readable_path = " ← ".join(id2name.get(p, p) for p in reversed(path))
             issue_body += f"* **מרחק**: `{dist}`\n"
             issue_body += f"* **נתיב**: `{readable_path}`\n"
         issue_body += "\n"
