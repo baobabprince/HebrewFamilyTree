@@ -5,7 +5,7 @@ New features compared to original:
   - builds a family-tree graph (NetworkX)
   - computes distance/path from PERSONID env-var to every person with upcoming
     birthday / yahrtzeit / anniversary
-  - if distance > 8 the path is printed in the GitHub issue
+  - if distance > DISTANCE_THRESHOLD the path is printed in the GitHub issue
 """
 
 import os
@@ -15,7 +15,8 @@ from datetime import date, timedelta
 
 from constants import (
     GOOGLE_DRIVE_FILE_ID, INPUT_GEDCOM_FILE, FIXED_GEDCOM_FILE, OUTPUT_CSV_FILE,
-    HEBREW_WEEKDAYS, HEBREW_EVENT_NAMES, LOG_ALL_PATHS_DISTANCE_THRESHOLD
+<<<<<<< HEAD
+    HEBREW_WEEKDAYS, HEBREW_EVENT_NAMES, DISTANCE_THRESHOLD
 )
 from google_drive_utils import download_gedcom_from_drive
 from gedcom_utils import fix_gedcom_format, process_gedcom_file
@@ -30,7 +31,8 @@ logging.basicConfig(
 logging.getLogger().setLevel(logging.INFO)
 
 # ------------------------------------------------------------------ helpers
-def build_issue_body(enriched_list, id2name, today_gregorian, person_id_from_env):
+<<<<<<< HEAD
+def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold):
     """
     enriched_list: list of tuples (distance, path, gregorian_date, heb_date_str, name, event_type)
     id2name      : dict mapping GEDCOM pointer -> display name
@@ -54,8 +56,9 @@ def build_issue_body(enriched_list, id2name, today_gregorian, person_id_from_env
         issue_body += f"* **אדם/משפחה**: `{name}`\n"
 
         # include distance & path only if PERSONID was supplied and distance > 8
-        if person_id_from_env and dist is not None and dist > LOG_ALL_PATHS_DISTANCE_THRESHOLD:
-            readable_path = " → ".join(id2name.get(p, p) for p in path)
+<<<<<<< HEAD
+        if PERSONID and dist is not None and dist > distance_threshold and path:
+            readable_path = " ← ".join(id2name.get(p, p) for p in reversed(path))
             issue_body += f"* **מרחק**: `{dist}`\n"
             issue_body += f"* **נתיב**: `{readable_path}`\n"
         issue_body += "\n"
@@ -94,6 +97,10 @@ def main():
     # ---------- build graph for distance / path ----------
     G, id2name = build_graph(FIXED_GEDCOM_FILE)
     PERSONID = os.getenv("PERSONID")
+    try:
+        distance_threshold = int(os.getenv("DISTANCE_THRESHOLD", DISTANCE_THRESHOLD))
+    except (ValueError, TypeError):
+        distance_threshold = DISTANCE_THRESHOLD
 
     enriched = []
     for gregorian_date, original_date_str_parsed, name, event_type in relevant_upcoming_dates:
@@ -113,7 +120,8 @@ def main():
     # ---------- build GitHub issue ----------
     parasha = get_parasha_for_week(today_gregorian)
     issue_title = f"{parasha} - תאריכים עבריים קרובים: {today_gregorian.strftime('%Y-%m-%d')}"
-    issue_body = build_issue_body(enriched, id2name, today_gregorian, PERSONID)
+<<<<<<< HEAD
+    issue_body = build_issue_body(enriched, id2name, today_gregorian, distance_threshold)
 
     github_output_path = os.getenv("GITHUB_OUTPUT")
     if github_output_path:
@@ -128,4 +136,8 @@ def main():
 
     logging.info("Script finished.")
 
+<<<<<<< HEAD
     
+# ------------------------------------------------------------------ entrypoint
+if __name__ == "__main__":
+    main()
