@@ -5,7 +5,7 @@ New features compared to original:
   - builds a family-tree graph (NetworkX)
   - computes distance/path from PERSONID env-var to every person with upcoming
     birthday / yahrtzeit / anniversary
-  - if distance > 8 the path is printed in the GitHub issue
+  - if distance > 3 the path is printed in the GitHub issue
 """
 
 import os
@@ -27,7 +27,7 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[logging.FileHandler("app.log"), logging.StreamHandler()]
 )
-    logging.getLogger().setLevel(logging.INFO)
+logging.getLogger().setLevel(logging.INFO)
 
 # ------------------------------------------------------------------ helpers
 def build_issue_body(enriched_list, id2name, today_gregorian):
@@ -54,7 +54,7 @@ def build_issue_body(enriched_list, id2name, today_gregorian):
 
         # include distance & path only if PERSONID was supplied and distance > 8
         PERSONID = os.getenv("PERSONID")
-        if PERSONID and dist is not None and dist > 8:
+        if PERSONID and dist is not None and dist > 3:
             readable_path = " → ".join(id2name.get(p, p) for p in path)
             issue_body += f"* **מרחק**: `{dist}`\n"
             issue_body += f"* **נתיב**: `{readable_path}`\n"
