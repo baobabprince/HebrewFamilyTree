@@ -30,7 +30,7 @@ logging.basicConfig(
 logging.getLogger().setLevel(logging.INFO)
 
 # ------------------------------------------------------------------ helpers
-def build_issue_body(enriched_list, id2name, today_gregorian):
+def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold):
     """
     enriched_list: list of tuples (distance, path, gregorian_date, heb_date_str, name, event_type)
     id2name      : dict mapping GEDCOM pointer -> display name
@@ -93,6 +93,10 @@ def main():
     # ---------- build graph for distance / path ----------
     G, id2name = build_graph(FIXED_GEDCOM_FILE)
     PERSONID = os.getenv("PERSONID")
+    try:
+        distance_threshold = int(os.getenv("DISTANCE_THRESHOLD", DISTANCE_THRESHOLD))
+    except (ValueError, TypeError):
+        distance_threshold = DISTANCE_THRESHOLD
 
     enriched = []
     for gregorian_date, original_date_str_parsed, name, event_type in relevant_upcoming_dates:
@@ -112,7 +116,7 @@ def main():
     # ---------- build GitHub issue ----------
     parasha = get_parasha_for_week(today_gregorian)
     issue_title = f"{parasha} - תאריכים עבריים קרובים: {today_gregorian.strftime('%Y-%m-%d')}"
-    issue_body = build_issue_body(enriched, id2name, today_gregorian)
+    issue_body = build_issue_body(enriched, id2name, today_gregorian, distance_threshold)
 
     github_output_path = os.getenv("GITHUB_OUTPUT")
     if github_output_path:
