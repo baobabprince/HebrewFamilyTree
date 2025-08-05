@@ -28,6 +28,11 @@ jobs:
       - name: Install GitHub CLI
         run: sudo apt-get install gh -y
 
+      - name: Calculate distances
+        run: python calculate_distance.py
+        env:
+          PERSONID: ${{ secrets.PERSONID }}
+
       - name: Run main processing script
         id: process_gedcom
         run: python main.py
