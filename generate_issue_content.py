@@ -37,6 +37,12 @@ def get_marriage_details(family_element):
                     return date_child.get_value()
     return None
 
+def is_person_living(individual_element):
+    for child in individual_element.get_child_elements():
+        if child.get_tag() == "DEAT":
+            return False
+    return True
+
 if __name__ == "__main__":
     gedcom_file = "fixed_tree.ged"
     distances_file = "distances.txt"
@@ -103,6 +109,8 @@ if __name__ == "__main__":
             if hebrew_birt_date and (hebrew_birt_date[0], hebrew_birt_date[1]) in next_hebrew_dates:
                 hebrew_date_formatted = f"{get_hebrew_day_string(hebrew_birt_date[0])} ב{get_hebrew_month_name(hebrew_birt_date[1])}"
                 event_desc = f"Birthday: {person_name} ({hebrew_date_formatted})"
+                if is_person_living(individual_element):
+                    event_desc = "🎂 " + event_desc
                 if current_distance > DISTANCE_THRESHOLD:
                     path = find_path(graph, person_id_env, indi_id)
                     if path:
@@ -117,6 +125,7 @@ if __name__ == "__main__":
             if hebrew_deat_date and (hebrew_deat_date[0], hebrew_deat_date[1]) in next_hebrew_dates:
                 hebrew_date_formatted = f"{get_hebrew_day_string(hebrew_deat_date[0])} ב{get_hebrew_month_name(hebrew_deat_date[1])}"
                 event_desc = f"Death Day: {person_name} ({hebrew_date_formatted})"
+                event_desc = "🪦 " + event_desc
                 if current_distance > DISTANCE_THRESHOLD:
                     path = find_path(graph, person_id_env, indi_id)
                     if path:
@@ -142,7 +151,7 @@ if __name__ == "__main__":
                 wife_name = get_person_name(individuals.get(wife_id, None)) if wife_id else "Unknown"
                 
                 hebrew_date_formatted = f"{get_hebrew_day_string(hebrew_marr_date[0])} ב{get_hebrew_month_name(hebrew_marr_date[1])}"
-                event_desc = f"Marriage Day: {husband_name} & {wife_name} ({hebrew_date_formatted})"
+                event_desc = f"💑 Marriage Day: {husband_name} & {wife_name} ({hebrew_date_formatted})"
 
                 # Check distance for both husband and wife if available
                 if husband_id and distances.get(husband_id, -1) > DISTANCE_THRESHOLD:
