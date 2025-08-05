@@ -5,7 +5,7 @@ New features compared to original:
   - builds a family-tree graph (NetworkX)
   - computes distance/path from PERSONID env-var to every person with upcoming
     birthday / yahrtzeit / anniversary
-  - if distance > 3 the path is printed in the GitHub issue
+  - if distance > DISTANCE_THRESHOLD the path is printed in the GitHub issue
 """
 
 import os
@@ -15,7 +15,7 @@ from datetime import date, timedelta
 
 from constants import (
     GOOGLE_DRIVE_FILE_ID, INPUT_GEDCOM_FILE, FIXED_GEDCOM_FILE, OUTPUT_CSV_FILE,
-    HEBREW_WEEKDAYS, HEBREW_EVENT_NAMES
+    HEBREW_WEEKDAYS, HEBREW_EVENT_NAMES, DISTANCE_THRESHOLD
 )
 from google_drive_utils import download_gedcom_from_drive
 from gedcom_utils import fix_gedcom_format, process_gedcom_file
@@ -54,7 +54,7 @@ def build_issue_body(enriched_list, id2name, today_gregorian):
 
         # include distance & path only if PERSONID was supplied and distance > 8
         PERSONID = os.getenv("PERSONID")
-        if PERSONID and dist is not None and dist > 3:
+        if PERSONID and dist is not None and dist > DISTANCE_THRESHOLD:
             readable_path = " ← ".join(id2name.get(p, p) for p in reversed(path))
             issue_body += f"* **מרחק**: `{dist}`\n"
             issue_body += f"* **נתיב**: `{readable_path}`\n"

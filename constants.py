@@ -49,3 +49,4 @@ GOOGLE_DRIVE_FILE_ID = os.environ.get('GOOGLE_DRIVE_FILE_ID', '1ZPt2FeXPueje3P6W
 INPUT_GEDCOM_FILE = "tree.ged"
 FIXED_GEDCOM_FILE = "fixed_tree.ged"
 OUTPUT_CSV_FILE = "dates.csv"
+DISTANCE_THRESHOLD = 3

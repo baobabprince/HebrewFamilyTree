@@ -7,7 +7,7 @@ from gedcom.parser import Parser
 from gedcom.element.individual import IndividualElement
 from gedcom.element.family import FamilyElement
 from calculate_distance import build_family_graph, get_person_name, calculate_distances, find_path
-from constants import HEBREW_MONTHS_MAP, HEBREW_EVENT_NAMES, HEBREW_MONTH_NAMES_FULL
+from constants import HEBREW_MONTHS_MAP, HEBREW_EVENT_NAMES, HEBREW_MONTH_NAMES_FULL, DISTANCE_THRESHOLD
 from gedcom_utils import get_hebrew_date_from_gedcom_date, get_hebrew_day_string, get_hebrew_month_name
 
 def get_next_hebrew_dates(num_days=8):
@@ -103,7 +103,7 @@ if __name__ == "__main__":
             if hebrew_birt_date and (hebrew_birt_date[0], hebrew_birt_date[1]) in next_hebrew_dates:
                 hebrew_date_formatted = f"{get_hebrew_day_string(hebrew_birt_date[0])} ב{get_hebrew_month_name(hebrew_birt_date[1])}"
                 event_desc = f"Birthday: {person_name} ({hebrew_date_formatted})"
-                if current_distance > 3:
+                if current_distance > DISTANCE_THRESHOLD:
                     path = find_path(graph, person_id_env, indi_id)
                     if path:
                         path_names = [get_person_name(individuals[node_id]) for node_id in path]
@@ -117,7 +117,7 @@ if __name__ == "__main__":
             if hebrew_deat_date and (hebrew_deat_date[0], hebrew_deat_date[1]) in next_hebrew_dates:
                 hebrew_date_formatted = f"{get_hebrew_day_string(hebrew_deat_date[0])} ב{get_hebrew_month_name(hebrew_deat_date[1])}"
                 event_desc = f"Death Day: {person_name} ({hebrew_date_formatted})"
-                if current_distance > 3:
+                if current_distance > DISTANCE_THRESHOLD:
                     path = find_path(graph, person_id_env, indi_id)
                     if path:
                         path_names = [get_person_name(individuals[node_id]) for node_id in path]
@@ -145,13 +145,13 @@ if __name__ == "__main__":
                 event_desc = f"Marriage Day: {husband_name} & {wife_name} ({hebrew_date_formatted})"
 
                 # Check distance for both husband and wife if available
-                if husband_id and distances.get(husband_id, -1) > 3:
+                if husband_id and distances.get(husband_id, -1) > DISTANCE_THRESHOLD:
                     path = find_path(graph, person_id_env, husband_id)
                     if path:
                         path_names = [get_person_name(individuals[node_id]) for node_id in path]
                         event_desc += f" (Husband Distance: {distances.get(husband_id)}, Path: {" -> ".join(path_names)})"
                 
-                if wife_id and distances.get(wife_id, -1) > 3:
+                if wife_id and distances.get(wife_id, -1) > DISTANCE_THRESHOLD:
                     path = find_path(graph, person_id_env, wife_id)
                     if path:
                         path_names = [get_person_name(individuals[node_id]) for node_id in path]
