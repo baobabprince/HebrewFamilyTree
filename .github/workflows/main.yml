@@ -28,16 +28,12 @@ jobs:
       - name: Install GitHub CLI
         run: sudo apt-get install gh -y
 
-      - name: Calculate distances
-        run: python calculate_distance.py
-        env:
-          PERSONID: ${{ secrets.PERSONID }}
-
       - name: Run main processing script
         id: process_gedcom
         run: python main.py
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+          PERSONID: ${{ secrets.PERSONID }}
 
       - name: Create GitHub Issue for Upcoming Dates
         if: steps.process_gedcom.outputs.has_relevant_dates == 'true'
