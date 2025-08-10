@@ -15,7 +15,6 @@ from datetime import date, timedelta
 
 from constants import (
     GOOGLE_DRIVE_FILE_ID, INPUT_GEDCOM_FILE, FIXED_GEDCOM_FILE, OUTPUT_CSV_FILE,
-<<<<<<< HEAD
     HEBREW_WEEKDAYS, HEBREW_EVENT_NAMES, DISTANCE_THRESHOLD
 )
 from google_drive_utils import download_gedcom_from_drive
@@ -31,7 +30,6 @@ logging.basicConfig(
 logging.getLogger().setLevel(logging.INFO)
 
 # ------------------------------------------------------------------ helpers
-<<<<<<< HEAD
 def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold):
     """
     enriched_list: list of tuples (distance, path, gregorian_date, heb_date_str, name, event_type)
@@ -56,7 +54,6 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
         issue_body += f"* **אדם/משפחה**: `{name}`\n"
 
         # include distance & path only if PERSONID was supplied and distance > 8
-<<<<<<< HEAD
         if PERSONID and dist is not None and dist > distance_threshold and path:
             readable_path = " ← ".join(id2name.get(p, p) for p in reversed(path))
             issue_body += f"* **מרחק**: `{dist}`\n"
@@ -120,7 +117,6 @@ def main():
     # ---------- build GitHub issue ----------
     parasha = get_parasha_for_week(today_gregorian)
     issue_title = f"{parasha} - תאריכים עבריים קרובים: {today_gregorian.strftime('%Y-%m-%d')}"
-<<<<<<< HEAD
     issue_body = build_issue_body(enriched, id2name, today_gregorian, distance_threshold)
 
     github_output_path = os.getenv("GITHUB_OUTPUT")
@@ -134,10 +130,7 @@ def main():
     else:
         logging.warning("GITHUB_OUTPUT not set – skipping workflow outputs.")
 
-    logging.info("Script finished.")
-
-<<<<<<< HEAD
-    
+    logging.info("Script finished.")    
 # ------------------------------------------------------------------ entrypoint
 if __name__ == "__main__":
     main()
