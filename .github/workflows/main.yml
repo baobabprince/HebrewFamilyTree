@@ -46,7 +46,6 @@ jobs:
         run: python main.py
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
-<<<<<<< HEAD
           PERSONID: ${{ github.event.inputs.person_id || secrets.PERSONID }}
           DISTANCE_THRESHOLD: ${{ github.event.inputs.distance_threshold }}
 
