@@ -14,7 +14,7 @@ on:
         description: 'Distance threshold for including path in issue (default: 8)'
         required: false
         type: number
-        default: 8
+        default: "8"
 
 permissions:
   contents: write
