@@ -30,7 +30,7 @@ logging.basicConfig(
 logging.getLogger().setLevel(logging.INFO)
 
 # ------------------------------------------------------------------ helpers
-def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold):
+def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold, person_id):
     """
     enriched_list: list of tuples (distance, path, gregorian_date, heb_date_str, name, event_type)
     id2name      : dict mapping GEDCOM pointer -> display name
@@ -54,7 +54,7 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
         issue_body += f"* **אדם/משפחה**: `{name}`\n"
 
         # include distance & path only if PERSONID was supplied and distance > 8
-        if PERSONID and dist is not None and dist > distance_threshold and path:
+        if person_id and dist is not None and dist > distance_threshold and path:
             readable_path = " ← ".join(id2name.get(p, p) for p in reversed(path))
             issue_body += f"* **מרחק**: `{dist}`\n"
             issue_body += f"* **נתיב**: `{readable_path}`\n"
@@ -79,6 +79,8 @@ def main():
         logging.debug(f.read())
 
     logging.info("Step 3: Processing GEDCOM …")
+    person_id = os.environ.get('PERSONID')
+    distance_threshold = os.environ.get('DISTANCE_THRESHOLD')
     processed_rows = process_gedcom_file(FIXED_GEDCOM_FILE, OUTPUT_CSV_FILE)
     logging.debug(f"Processed rows from GEDCOM: {processed_rows}")
 
@@ -117,7 +119,7 @@ def main():
     # ---------- build GitHub issue ----------
     parasha = get_parasha_for_week(today_gregorian)
     issue_title = f"{parasha} - תאריכים עבריים קרובים: {today_gregorian.strftime('%Y-%m-%d')}"
-    issue_body = build_issue_body(enriched, id2name, today_gregorian, distance_threshold)
+    issue_body = build_issue_body(enriched, id2name, today_gregorian, distance_threshold, person_id)
 
     github_output_path = os.getenv("GITHUB_OUTPUT")
     if github_output_path:
