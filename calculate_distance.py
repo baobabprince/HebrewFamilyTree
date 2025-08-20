@@ -4,7 +4,6 @@ from collections import deque
 from gedcom.parser import Parser
 from gedcom.element.individual import IndividualElement
 from gedcom.element.family import FamilyElement
-from constants import LOG_ALL_PATHS_DISTANCE_THRESHOLD
 
 def build_family_graph(gedcom_file_path):
     parser = Parser()
@@ -155,6 +154,13 @@ if __name__ == "__main__":
 
     start_person_name = get_person_name(individuals_data[person_id_env])
     distances = calculate_distances(graph, person_id_env)
+
+    distance_threshold_env = os.getenv("DISTANCE_THRESHOLD", "8")
+    try:
+        LOG_ALL_PATHS_DISTANCE_THRESHOLD = int(distance_threshold_env)
+    except ValueError:
+        print(f"Error: Invalid DISTANCE_THRESHOLD value '{distance_threshold_env}'. Must be an integer.")
+        sys.exit(1)
 
     with open(output_file, "w", encoding="utf-8") as f:
         f.write(f"Distances from {start_person_name} ({person_id_env}):\n\n")
