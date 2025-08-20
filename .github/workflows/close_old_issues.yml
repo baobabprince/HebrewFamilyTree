@@ -19,3 +19,4 @@ jobs:
           close-issue-message: 'This issue was closed because it has been inactive for 14 days.'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           operations-per-run: 30
+          only-labels: 'family-dates'
