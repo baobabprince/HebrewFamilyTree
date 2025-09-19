@@ -27,7 +27,7 @@ HEBREW_DAY_TO_NUM = {
 HEBREW_MONTH_NAMES_TO_NUM = {v: k for k, v in HEBREW_MONTH_NAMES_FULL.items()}
 
 HEBCAL_API_BASE_URL = "https://www.hebcal.com/converter"
-UPCOMING_DAYS = 7
+UPCOMING_DAYS = 8
 
 HEBREW_WEEKDAYS = {
     "Monday": "יום שני",
