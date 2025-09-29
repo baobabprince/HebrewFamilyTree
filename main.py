@@ -40,27 +40,41 @@ def get_relationship(p1_id, p2_id, parser):
 
     # Check if they are spouses
     for family in p1_families:
-        if p1.is_spouse_in_family(family) and p2.is_spouse_in_family(family):
-            if p1.get_gender() == "M":
-                return "husband"
-            else:
-                return "wife"
+        husband = family.get_husband()
+        wife = family.get_wife()
+        if husband and wife:
+            if (p1.get_pointer() == husband.get_pointer() and p2.get_pointer() == wife.get_pointer()) or \
+               (p1.get_pointer() == wife.get_pointer() and p2.get_pointer() == husband.get_pointer()):
+                if p1.get_gender() == "M":
+                    return "husband"
+                else:
+                    return "wife"
 
     # Check if p1 is parent of p2
     p2_child_family = parser.get_family_as_child(p2)
-    if p2_child_family and p1.is_spouse_in_family(p2_child_family):
-        if p1.get_gender() == "M":
+    if p2_child_family:
+        husband = p2_child_family.get_husband()
+        wife = p2_child_family.get_wife()
+        if husband and p1.get_pointer() == husband.get_pointer():
             return "father"
-        else:
+        if wife and p1.get_pointer() == wife.get_pointer():
             return "mother"
 
     # Check if p2 is parent of p1
     p1_child_family = parser.get_family_as_child(p1)
-    if p1_child_family and p2.is_spouse_in_family(p1_child_family):
-        if p1.get_gender() == "M":
-            return "son"
-        else:
-            return "daughter"
+    if p1_child_family:
+        husband = p1_child_family.get_husband()
+        wife = p1_child_family.get_wife()
+        if husband and p2.get_pointer() == husband.get_pointer():
+            if p1.get_gender() == "M":
+                return "son"
+            else:
+                return "daughter"
+        if wife and p2.get_pointer() == wife.get_pointer():
+            if p1.get_gender() == "M":
+                return "son"
+            else:
+                return "daughter"
 
     return ""
 
