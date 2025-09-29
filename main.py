@@ -177,7 +177,7 @@ def main():
             fh.write("\nEOF\n")
             fh.write("has_relevant_dates=true\n")
     else:
-        logging.warning("GITHUB_OUTPUT not set ". skipping workflow outputs.")
+        logging.warning("GITHUB_OUTPUT not set. skipping workflow outputs.")
 
     logging.info("Script finished.")    
 # ------------------------------------------------------------------ entrypoint
