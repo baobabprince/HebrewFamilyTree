@@ -1,4 +1,3 @@
-
 name: Close Old Issues
 
 on: 
@@ -14,9 +13,22 @@ jobs:
     steps:
       - uses: actions/stale@v9
         with:
+          only-labels: family-dates
+          days-before-stale: 14
           days-before-close: 7
-          stale-issue-message: 'This issue is stale because it has been open for 7 days with no activity. It will be closed in 7 days if no further activity occurs.'
-          close-issue-message: 'This issue was closed because it has been inactive for 14 days.'
+          stale-issue-message: 'This issue is stale because it has been open for 14 days with no activity. It will be closed in 7 days if no further activity occurs.'
+          close-issue-message: 'This issue was closed because it has been inactive for 21 days.'
+          stale-issue-label: Stale
+          close-issue-reason: not_planned
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           operations-per-run: 30
-          only-labels: 'family-dates'
+          remove-stale-when-updated: true
+          debug-only: false
+          ascending: false
+          delete-branch: false
+          exempt-all-milestones: false
+          exempt-all-assignees: false
+          exempt-draft-pr: false
+          enable-statistics: true
+          ignore-updates: false
+          include-only-assigned: false
