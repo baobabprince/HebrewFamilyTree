@@ -32,19 +32,29 @@ logging.getLogger().setLevel(logging.INFO)
 
 # ------------------------------------------------------------------ helpers
 def get_relationship(p1_id, p2_id, parser):
+    # Get the individual elements
     p1 = parser.get_element_dictionary()[p1_id]
     p2 = parser.get_element_dictionary()[p2_id]
+
+    def get_husband_and_wife_ids(family):
+        husband_id = None
+        wife_id = None
+        for child in family.get_child_elements():
+            if child.get_tag() == 'HUSB':
+                husband_id = child.get_value()
+            elif child.get_tag() == 'WIFE':
+                wife_id = child.get_value()
+        return husband_id, wife_id
 
     # Get all families of p1
     p1_families = parser.get_families(p1)
 
     # Check if they are spouses
     for family in p1_families:
-        husband = family.get_husband()
-        wife = family.get_wife()
-        if husband and wife:
-            if (p1.get_pointer() == husband.get_pointer() and p2.get_pointer() == wife.get_pointer()) or \
-               (p1.get_pointer() == wife.get_pointer() and p2.get_pointer() == husband.get_pointer()):
+        husband_id, wife_id = get_husband_and_wife_ids(family)
+        if husband_id and wife_id:
+            if (p1.get_pointer() == husband_id and p2.get_pointer() == wife_id) or \
+               (p1.get_pointer() == wife_id and p2.get_pointer() == husband_id):
                 if p1.get_gender() == "M":
                     return "husband"
                 else:
@@ -53,31 +63,28 @@ def get_relationship(p1_id, p2_id, parser):
     # Check if p1 is parent of p2
     p2_child_family = parser.get_family_as_child(p2)
     if p2_child_family:
-        husband = p2_child_family.get_husband()
-        wife = p2_child_family.get_wife()
-        if husband and p1.get_pointer() == husband.get_pointer():
+        husband_id, wife_id = get_husband_and_wife_ids(p2_child_family)
+        if husband_id and p1.get_pointer() == husband_id:
             return "father"
-        if wife and p1.get_pointer() == wife.get_pointer():
+        if wife_id and p1.get_pointer() == wife_id:
             return "mother"
 
     # Check if p2 is parent of p1
     p1_child_family = parser.get_family_as_child(p1)
     if p1_child_family:
-        husband = p1_child_family.get_husband()
-        wife = p1_child_family.get_wife()
-        if husband and p2.get_pointer() == husband.get_pointer():
+        husband_id, wife_id = get_husband_and_wife_ids(p1_child_family)
+        if husband_id and p2.get_pointer() == husband_id:
             if p1.get_gender() == "M":
                 return "son"
             else:
                 return "daughter"
-        if wife and p2.get_pointer() == wife.get_pointer():
+        if wife_id and p2.get_pointer() == wife_id:
             if p1.get_gender() == "M":
                 return "son"
             else:
                 return "daughter"
 
     return ""
-
 
 def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold, person_id, parser):
     """
