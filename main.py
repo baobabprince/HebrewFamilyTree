@@ -32,13 +32,12 @@ logging.getLogger().setLevel(logging.INFO)
 
 # ------------------------------------------------------------------ helpers
 def get_relationship(p1_id, p2_id, parser):
-    # Get the individual elements
-    try:
-        p1 = parser.get_element_dictionary()[p1_id]
-        p2 = parser.get_element_dictionary()[p2_id]
-    except KeyError:
-        # Handle cases where the ID from the path isn't a valid individual element
-        return "unknown/non-individual"
+    # Helper to find a specific sub-element (like FAMC) by tag
+    def find_sub_element(element, tag):
+        for child in element.get_child_elements():
+            if child.get_tag() == tag:
+                return child
+        return None
 
     def get_husband_and_wife_ids(family):
         husband_id = None
@@ -50,13 +49,18 @@ def get_relationship(p1_id, p2_id, parser):
                 wife_id = child.get_value()
         return husband_id, wife_id
     
-    # --- Check 1: Spouses (p1 and p2 belong to the same FAMS/Spouse family) ---
-    # The 'parser.get_families(p1)' used in the original code is correct for finding FAMS families
+    # Get the individual elements
+    try:
+        p1 = parser.get_element_dictionary()[p1_id]
+        p2 = parser.get_element_dictionary()[p2_id]
+    except KeyError:
+        return "unknown/non-individual"
+
+    # --- Check 1: Spouses ---
     p1_families_as_spouse = parser.get_families(p1)
     for family in p1_families_as_spouse:
         husband_id, wife_id = get_husband_and_wife_ids(family)
         if husband_id and wife_id:
-            # Check if p2 is the other spouse in this family unit
             if (p1.get_pointer() == husband_id and p2.get_pointer() == wife_id) or \
                (p1.get_pointer() == wife_id and p2.get_pointer() == husband_id):
                 if p1.get_gender() == "M":
@@ -64,11 +68,10 @@ def get_relationship(p1_id, p2_id, parser):
                 else:
                     return "wife (of)"
 
-    # --- Check 2: p1 is Parent of p2 (p2's FAMC is one of p1's FAMS) ---
-    # The individual element p2 has a method to get the family element where they are a child (FAMC)
-    p2_famc_element = p2.get_sub_element('FAMC')
+    # --- Check 2: p1 is Parent of p2 (Look up p2's FAMC) ---
+    # FIX: Use find_sub_element helper instead of p2.get_sub_element
+    p2_famc_element = find_sub_element(p2, 'FAMC')
     if p2_famc_element:
-        # Get the actual Family element using the value (e.g., '@F1@')
         famc_id = p2_famc_element.get_value()
         p2_child_family = parser.get_element_dictionary().get(famc_id)
 
@@ -80,33 +83,25 @@ def get_relationship(p1_id, p2_id, parser):
             if wife_id and p1.get_pointer() == wife_id:
                 return "mother (of)"
 
-    # --- Check 3: p2 is Parent of p1 (p1's FAMC is one of p2's FAMS) ---
-    # We are now checking the inverse: p1 is a child, and p2 is a parent
-    p1_famc_element = p1.get_sub_element('FAMC')
+    # --- Check 3: p2 is Parent of p1 (Look up p1's FAMC) ---
+    # FIX: Use find_sub_element helper instead of p1.get_sub_element
+    p1_famc_element = find_sub_element(p1, 'FAMC')
     if p1_famc_element:
-        # Get the actual Family element using the value (e.g., '@F1@')
         famc_id = p1_famc_element.get_value()
         p1_child_family = parser.get_element_dictionary().get(famc_id)
         
         if p1_child_family:
             husband_id, wife_id = get_husband_and_wife_ids(p1_child_family)
             
-            # Check if p2 is the father
-            if husband_id and p2.get_pointer() == husband_id:
-                if p1.get_gender() == "M":
-                    return "son (of)"
-                else:
-                    return "daughter (of)"
-            
-            # Check if p2 is the mother
-            if wife_id and p2.get_pointer() == wife_id:
+            # Check if p2 is the father or mother of p1
+            if (husband_id and p2.get_pointer() == husband_id) or \
+               (wife_id and p2.get_pointer() == wife_id):
                 if p1.get_gender() == "M":
                     return "son (of)"
                 else:
                     return "daughter (of)"
 
     return "relative"
-  
 def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold, person_id, parser):
     """
     enriched_list: list of tuples (distance, path, gregorian_date, heb_date_str, name, event_type)
