@@ -18,31 +18,19 @@ def get_hebrew_day_string(day):
 
 def fix_gedcom_format(input_file, output_file):
     """
-    Fixes the format of a GEDCOM file by normalizing spacing.
-    It uses a more robust regex to handle the three main GEDCOM line forms:
-    1. Level XREF_ID Tag (Record start, e.g., 0 @I1@ INDI)
-    2. Level Tag Value (e.g., 1 NAME John /Doe/)
-    3. Level Tag (e.g., 1 FAMC)
+    Fixes the format of a GEDCOM file by normalizing spacing AND removing
+    any line that does not conform to the basic GEDCOM line structure.
     """
     try:
-        # Use 'utf-8-sig' for safe reading, errors='replace' to avoid crash on bad bytes
         with open(input_file, "r", encoding="utf-8-sig", errors="replace") as file:
             lines = file.readlines()
-    except FileNotFoundError:
-        logging.error(f"Input file not found: {input_file}")
-        return
     except Exception as e:
         logging.error(f"Error reading input file {input_file}: {e}")
         return
 
     fixed_lines = []
     
-    # Regex Breakdown:
-    # ^(\d+): Captures the Level (e.g., '1')
-    # \s+: Requires one or more spaces
-    # (?:(@\S+@)\s+)? : NON-Capturing group for optional XREF_ID at start (e.g., '@I1@ ')
-    # (\S+) : Captures the Tag (e.g., 'NAME', 'INDI')
-    # (?:\s+(.*))?$ : NON-Capturing group for optional Value and rest of line
+    # Regex for VALID GEDCOM line: Level, Optional XREF_ID, Tag, Optional Value
     GEDCOM_LINE_REGEX = re.compile(r'^(\d+)\s+(?:(@\S+@)\s+)?(\S+)(?:\s+(.*))?$')
 
     for line in lines:
@@ -66,13 +54,11 @@ def fix_gedcom_format(input_file, output_file):
             fixed_line = " ".join(parts)
             fixed_lines.append(fixed_line)
         else:
-            # If the regex fails, log it and keep the original line as a fallback
-            # (Though keeping an invalid line means the parser will still likely fail)
-            logging.warning(f"Could not parse and fix line (keeping original): {line}")
-            fixed_lines.append(line)
+            # *Crucial Change*: Instead of keeping the original line, drop it and log the warning.
+            logging.warning(f"Dropping non-GEDCOM-compliant line: {line}")
+            # Do NOT append 'line' to 'fixed_lines'
 
     try:
-        # Write the output with standard UTF-8 encoding
         with open(output_file, "w", encoding="utf-8") as file:
             for line_to_write in fixed_lines:
                 file.write(line_to_write + "\n")
@@ -80,8 +66,6 @@ def fix_gedcom_format(input_file, output_file):
     except Exception as e:
         logging.error(f"Error writing output file {output_file}: {e}")
 
-# Example usage (assuming this function is in gedcom_utils.py)
-# fix_gedcom_format("tree.ged", "fixed_tree.ged")
 
 def get_name_from_individual(element):
     """Extracts name from an individual element."""
