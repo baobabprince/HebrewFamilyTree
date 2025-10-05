@@ -13,45 +13,75 @@ def get_hebrew_day_string(day):
     }
     return hebrew_numerals.get(day, str(day))
 
+# Ensure logging is configured if this function is run stand-alone
+# logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 def fix_gedcom_format(input_file, output_file):
-    """Fixes the format of a GEDCOM file."""
-    with open(input_file, "r", encoding="utf-8-sig", errors="replace") as file:
-        lines = file.readlines()
+    """
+    Fixes the format of a GEDCOM file by normalizing spacing.
+    It uses a more robust regex to handle the three main GEDCOM line forms:
+    1. Level XREF_ID Tag (Record start, e.g., 0 @I1@ INDI)
+    2. Level Tag Value (e.g., 1 NAME John /Doe/)
+    3. Level Tag (e.g., 1 FAMC)
+    """
+    try:
+        # Use 'utf-8-sig' for safe reading, errors='replace' to avoid crash on bad bytes
+        with open(input_file, "r", encoding="utf-8-sig", errors="replace") as file:
+            lines = file.readlines()
+    except FileNotFoundError:
+        logging.error(f"Input file not found: {input_file}")
+        return
+    except Exception as e:
+        logging.error(f"Error reading input file {input_file}: {e}")
+        return
 
     fixed_lines = []
+    
+    # Regex Breakdown:
+    # ^(\d+): Captures the Level (e.g., '1')
+    # \s+: Requires one or more spaces
+    # (?:(@\S+@)\s+)? : NON-Capturing group for optional XREF_ID at start (e.g., '@I1@ ')
+    # (\S+) : Captures the Tag (e.g., 'NAME', 'INDI')
+    # (?:\s+(.*))?$ : NON-Capturing group for optional Value and rest of line
+    GEDCOM_LINE_REGEX = re.compile(r'^(\d+)\s+(?:(@\S+@)\s+)?(\S+)(?:\s+(.*))?$')
+
     for line in lines:
         line = line.strip()
         if not line:
             continue
 
-        match = re.match(r'^(\d+)\s+(@?\S+@?)(?:\s+(.*))?$', line)
-        if match:
-            level, tag_or_xref, value = match.groups()
-            if value:
-                fixed_line = f"{level} {tag_or_xref} {value}"
-            else:
-                fixed_line = f"{level} {tag_or_xref}"
-        else:
-            parts = line.split(None, 2)
-            if len(parts) >= 1 and parts[0].isdigit():
-                level = parts[0]
-                if len(parts) == 3:
-                    tag_or_xref = parts[1]
-                    val = parts[2]
-                    fixed_line = f"{level} {tag_or_xref} {val}"
-                elif len(parts) == 2:
-                    tag_or_xref = parts[1]
-                    fixed_line = f"{level} {tag_or_xref}"
-                else:
-                    fixed_line = line
-            else:
-                fixed_line = line
+        match = GEDCOM_LINE_REGEX.match(line)
         
-        fixed_lines.append(fixed_line)
+        if match:
+            level, xref_id, tag, value = match.groups()
+            
+            # Reconstruct the line with normalized single spaces
+            parts = [level]
+            if xref_id:
+                parts.append(xref_id)
+            parts.append(tag)
+            if value:
+                parts.append(value)
+            
+            fixed_line = " ".join(parts)
+            fixed_lines.append(fixed_line)
+        else:
+            # If the regex fails, log it and keep the original line as a fallback
+            # (Though keeping an invalid line means the parser will still likely fail)
+            logging.warning(f"Could not parse and fix line (keeping original): {line}")
+            fixed_lines.append(line)
 
-    with open(output_file, "w", encoding="utf-8") as file:
-        for line_to_write in fixed_lines:
-            file.write(line_to_write + "\n")
+    try:
+        # Write the output with standard UTF-8 encoding
+        with open(output_file, "w", encoding="utf-8") as file:
+            for line_to_write in fixed_lines:
+                file.write(line_to_write + "\n")
+        logging.info(f"Successfully fixed and saved GEDCOM to {output_file}")
+    except Exception as e:
+        logging.error(f"Error writing output file {output_file}: {e}")
+
+# Example usage (assuming this function is in gedcom_utils.py)
+# fix_gedcom_format("tree.ged", "fixed_tree.ged")
 
 def get_name_from_individual(element):
     """Extracts name from an individual element."""
