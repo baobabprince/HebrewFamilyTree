@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-main.py  –  GEDCOM downloader + Hebrew-date checker + GitHub-issue creator
+main.py  "".  GEDCOM downloader + Hebrew-date checker + GitHub-issue creator
 New features compared to original:
   - builds a family-tree graph (NetworkX)
   - computes distance/path from PERSONID env-var to every person with upcoming
@@ -20,6 +20,7 @@ from constants import (
 from google_drive_utils import download_gedcom_from_drive
 from gedcom_utils import fix_gedcom_format, process_gedcom_file
 from hebcal_api import get_hebrew_date_range_api, find_relevant_hebrew_dates, get_parasha_for_week
+from gedcom.parser import Parser
 from gedcom_graph import build_graph, distance_and_path
 # ------------------------------------------------------------------ logging
 logging.basicConfig(
@@ -30,7 +31,78 @@ logging.basicConfig(
 logging.getLogger().setLevel(logging.INFO)
 
 # ------------------------------------------------------------------ helpers
-def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold, person_id):
+def get_relationship(p1_id, p2_id, parser):
+    # Helper to find a specific sub-element (like FAMC) by tag
+    def find_sub_element(element, tag):
+        for child in element.get_child_elements():
+            if child.get_tag() == tag:
+                return child
+        return None
+
+    def get_husband_and_wife_ids(family):
+        husband_id = None
+        wife_id = None
+        for child in family.get_child_elements():
+            if child.get_tag() == 'HUSB':
+                husband_id = child.get_value()
+            elif child.get_tag() == 'WIFE':
+                wife_id = child.get_value()
+        return husband_id, wife_id
+    
+    # Get the individual elements
+    try:
+        p1 = parser.get_element_dictionary()[p1_id]
+        p2 = parser.get_element_dictionary()[p2_id]
+    except KeyError:
+        return "unknown/non-individual"
+
+    # --- Check 1: Spouses ---
+    p1_families_as_spouse = parser.get_families(p1)
+    for family in p1_families_as_spouse:
+        husband_id, wife_id = get_husband_and_wife_ids(family)
+        if husband_id and wife_id:
+            if (p1.get_pointer() == husband_id and p2.get_pointer() == wife_id) or \
+               (p1.get_pointer() == wife_id and p2.get_pointer() == husband_id):
+                if p1.get_gender() == "M":
+                    return "husband (of)"
+                else:
+                    return "wife (of)"
+
+    # --- Check 2: p1 is Parent of p2 (Look up p2's FAMC) ---
+    # FIX: Use find_sub_element helper instead of p2.get_sub_element
+    p2_famc_element = find_sub_element(p2, 'FAMC')
+    if p2_famc_element:
+        famc_id = p2_famc_element.get_value()
+        p2_child_family = parser.get_element_dictionary().get(famc_id)
+
+        if p2_child_family:
+            husband_id, wife_id = get_husband_and_wife_ids(p2_child_family)
+            
+            if husband_id and p1.get_pointer() == husband_id:
+                return "father (of)"
+            if wife_id and p1.get_pointer() == wife_id:
+                return "mother (of)"
+
+    # --- Check 3: p2 is Parent of p1 (Look up p1's FAMC) ---
+    # FIX: Use find_sub_element helper instead of p1.get_sub_element
+    p1_famc_element = find_sub_element(p1, 'FAMC')
+    if p1_famc_element:
+        famc_id = p1_famc_element.get_value()
+        p1_child_family = parser.get_element_dictionary().get(famc_id)
+        
+        if p1_child_family:
+            husband_id, wife_id = get_husband_and_wife_ids(p1_child_family)
+            
+            # Check if p2 is the father or mother of p1
+            if (husband_id and p2.get_pointer() == husband_id) or \
+               (wife_id and p2.get_pointer() == wife_id):
+                if p1.get_gender() == "M":
+                    return "son (of)"
+                else:
+                    return "daughter (of)"
+
+    return "relative"
+def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold, person_id, parser):
     """
     enriched_list: list of tuples (distance, path, gregorian_date, heb_date_str, name, event_type)
     id2name      : dict mapping GEDCOM pointer -> display name
@@ -55,7 +127,17 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
 
         # include distance & path only if PERSONID was supplied and distance > 8
         if person_id and dist is not None and dist > distance_threshold and path:
-            readable_path = " ← ".join(id2name.get(p, p) for p in reversed(path))
+            path_parts = []
+            reversed_path = list(reversed(path))
+            for i in range(len(reversed_path) - 1):
+                p1_id = reversed_path[i]
+                p2_id = reversed_path[i+1]
+                p1_name = id2name.get(p1_id, p1_id)
+                relationship = get_relationship(p1_id, p2_id, parser)
+                path_parts.append(f"{p1_name} ({relationship})")
+            
+            path_parts.append(id2name.get(reversed_path[-1], reversed_path[-1]))
+            readable_path = " ".join(path_parts)
             issue_body += f"* **מרחק**: `{dist}`\n"
             issue_body += f"* **נתיב**: `{readable_path}`\n"
         issue_body += "\n"
@@ -94,6 +176,8 @@ def main():
     relevant_upcoming_dates = find_relevant_hebrew_dates(processed_rows, hebrew_week_dates_map)
 
     # ---------- build graph for distance / path ----------
+    gedcom_parser = Parser()
+    gedcom_parser.parse_file(FIXED_GEDCOM_FILE)
     G, id2name = build_graph(FIXED_GEDCOM_FILE)
     PERSONID = os.getenv("PERSONID")
     try:
@@ -119,7 +203,7 @@ def main():
     # ---------- build GitHub issue ----------
     parasha = get_parasha_for_week(today_gregorian)
     issue_title = f"{parasha} - תאריכים עבריים קרובים: {today_gregorian.strftime('%Y-%m-%d')}"
-    issue_body = build_issue_body(enriched, id2name, today_gregorian, distance_threshold, person_id)
+    issue_body = build_issue_body(enriched, id2name, today_gregorian, distance_threshold, person_id, gedcom_parser)
 
     github_output_path = os.getenv("GITHUB_OUTPUT")
     if github_output_path:
@@ -130,7 +214,7 @@ def main():
             fh.write("\nEOF\n")
             fh.write("has_relevant_dates=true\n")
     else:
-        logging.warning("GITHUB_OUTPUT not set – skipping workflow outputs.")
+        logging.warning("GITHUB_OUTPUT not set. skipping workflow outputs.")
 
     logging.info("Script finished.")    
 # ------------------------------------------------------------------ entrypoint
