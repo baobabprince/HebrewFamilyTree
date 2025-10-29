@@ -57,4 +57,4 @@ jobs:
           ISSUE_BODY: ${{ steps.process_gedcom.outputs.issue_body }}
         run: |
           echo "Relevant upcoming dates found. Creating GitHub Issue..."
-          gh issue create --title "$ISSUE_TITLE" --repo ${{ github.repository }} --body "$ISSUE_BODY" --label "family-dates"
+          gh issue create --title "$ISSUE_TITLE" --repo ${{ github.repository }} --body "$ISSUE_BODY" --assignee "${{ github.actor }}" --label "family-dates"
