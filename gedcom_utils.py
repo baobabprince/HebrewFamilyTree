@@ -114,6 +114,12 @@ def process_event(event_element, name, dates, event_type=None):
     for child in event_element.get_child_elements():
         if child.get_tag() == "DATE":
             date_str = child.get_value()
+            year = None
+            parts = date_str.split()
+            if len(parts) > 0:
+                last_part = parts[-1]
+                if last_part.isdigit() and len(last_part) >= 3:
+                    year = last_part
 
             logging.debug(f"date_str: {date_str}")
             if not date_str:
@@ -191,7 +197,7 @@ def process_event(event_element, name, dates, event_type=None):
                 hebrew_date_formatted = f"{get_hebrew_day_string(day)} {hebrew_month_name}"
 
                 logging.debug(f"Appending date: month_num={month_num}, day={day}, hebrew_date_formatted='{hebrew_date_formatted}', name='{name}', event_tag_name='{hebrew_date_formatted}'")
-                dates.append((month_num, day, hebrew_date_formatted, f"{name} - {event_tag_name}: {hebrew_date_formatted}"))
+                dates.append((month_num, day, hebrew_date_formatted, f"{name} - {event_tag_name}: {hebrew_date_formatted}", year))
             else:
                 logging.debug(f"Month abbreviation '{month_abbr}' not found in HEBREW_MONTHS_MAP.")
 try:
@@ -237,21 +243,28 @@ def process_gedcom_file(file_path, output_csv_file):
 
     dates.sort(key=lambda x: (x[0], x[1]))
 
-    csv_data_rows = []
-    for _, _, original_date_str_parsed, output_str in dates:
+    processed_data = []
+    for month_num, day, original_date_str_parsed, output_str, year in dates:
         try:
             name, event_description = output_str.split(" - ", 1)
             event_type = event_description.split(":")[0].strip()
-            csv_data_rows.append([original_date_str_parsed, name, event_type])
+            processed_data.append({
+                "original_date_str_parsed": original_date_str_parsed,
+                "name": name,
+                "event_type": event_type,
+                "year": year,
+                "month": month_num,
+                "day": day
+            })
         except ValueError:
             logging.warning(f"Could not parse output string for CSV: {output_str}")
-            csv_data_rows.append([original_date_str_parsed, "Error in processing", "Error"])
-
-    with open(output_csv_file, 'w', newline='', encoding='utf-8') as csvfile:
-        csv_writer = csv.writer(csvfile)
-        csv_writer.writerow(["Date", "Name", "Event"])
-        csv_writer.writerows(csv_data_rows)
+            processed_data.append({
+                "original_date_str_parsed": original_date_str_parsed,
+                "name": "Error in processing",
+                "event_type": "Error",
+                "year": None,
+                "month": month_num,
+                "day": day
+            })
     
-    logging.info(f"Data successfully written to {output_csv_file}")
-    logging.debug(f"Dates list before returning: {dates}")
-    return csv_data_rows
+    return processed_data

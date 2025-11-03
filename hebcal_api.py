@@ -65,8 +65,6 @@ def get_hebrew_date_range_api(start_gregorian_date, num_days):
     logging.debug(f"Populated hebrew_dates_map: {hebrew_dates_map}")
     return hebrew_dates_map
 
-
-
 def find_relevant_hebrew_dates(processed_gedcom_rows, target_hebrew_dates_map):
     """
     Filters GEDCOM processed dates to find those matching the target Hebrew date range.

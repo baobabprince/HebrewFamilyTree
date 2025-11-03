@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-main.py  "".  GEDCOM downloader + Hebrew-date checker + GitHub-issue creator
+main.py  ".  GEDCOM downloader + Hebrew-date checker + GitHub-issue creator
 New features compared to original:
   - builds a family-tree graph (NetworkX)
   - computes distance/path from PERSONID env-var to every person with upcoming
@@ -19,7 +19,7 @@ from constants import (
 )
 from google_drive_utils import download_gedcom_from_drive
 from gedcom_utils import fix_gedcom_format, process_gedcom_file
-from hebcal_api import get_hebrew_date_range_api, find_relevant_hebrew_dates, get_parasha_for_week
+from hebcal_api import get_hebrew_date_range_api, get_parasha_for_week
 from gedcom.parser import Parser
 from gedcom_graph import build_graph, distance_and_path
 # ------------------------------------------------------------------ logging
@@ -102,9 +102,25 @@ def get_relationship(p1_id, p2_id, parser):
                     return "daughter (of)"
 
     return "relative"
+
+def find_relevant_hebrew_dates(processed_gedcom_rows, target_hebrew_dates_map):
+    """
+    Filters GEDCOM processed dates to find those matching the target Hebrew date range.
+    Returns a list of tuples: (gregorian_date, original_date_str, name, event_type, year)
+    """
+    relevant_dates = []
+    for row in processed_gedcom_rows:
+        month_num = row["month"]
+        day = row["day"]
+        hebrew_date_tuple = (month_num, day)
+        if hebrew_date_tuple in target_hebrew_dates_map:
+            gregorian_date = target_hebrew_dates_map[hebrew_date_tuple]
+            relevant_dates.append((gregorian_date, row["original_date_str_parsed"], row["name"], row["event_type"], row["year"]))
+    return relevant_dates
+
 def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold, person_id, parser):
     """
-    enriched_list: list of tuples (distance, path, gregorian_date, heb_date_str, name, event_type)
+    enriched_list: list of tuples (distance, path, gregorian_date, heb_date_str, name, event_type, year)
     id2name      : dict mapping GEDCOM pointer -> display name
     person_id_from_env: The PERSONID value read from the environment in the main function.
     """
@@ -117,12 +133,36 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
     # sort by date (closest first), then by distance
     enriched_list.sort(key=lambda t: (t[2], t[0]))
 
-    for dist, path, gregorian_date, original_date_str_parsed, name, event_type in enriched_list:
+    for dist, path, gregorian_date, original_date_str_parsed, name, event_type, year in enriched_list:
         hebrew_weekday = HEBREW_WEEKDAYS.get(gregorian_date.strftime('%A'), gregorian_date.strftime('%A'))
         event_name = HEBREW_EVENT_NAMES.get(event_type, event_type)
 
         issue_body += f"#### **{hebrew_weekday}, {original_date_str_parsed}**\n"
-        issue_body += f"* **אירוע**: `{event_name}`\n"
+        
+        if event_type == "יום הולדת":
+            age = ""
+            if year:
+                try:
+                    age = f" (בן {today_gregorian.year - int(year)})"
+                except ValueError:
+                    age = "" # year is not a number
+            issue_body += f"* **אירוע**: 🎂 `{event_name}{age}`\n"
+        elif event_type == "יום נישואין":
+            years = ""
+            if year:
+                try:
+                    years = f" (שנת נישואין {today_gregorian.year - int(year)})"
+                except ValueError:
+                    years = "" # year is not a number
+            issue_body += f"* **אירוע**: 💍 `{event_name}{years}`\n"
+        elif event_type == "יארצייט":
+            year_info = ""
+            if year:
+                year_info = f" (נפטר בשנת {year})"
+            issue_body += f"* **אירוע**: 🪦 `{event_name}{year_info}`\n"
+        else:
+            issue_body += f"* **אירוע**: `{event_name}`\n"
+
         issue_body += f"* **אדם/משפחה**: `{name}`\n"
 
         # include distance & path only if PERSONID was supplied and distance > 8
@@ -186,7 +226,7 @@ def main():
         distance_threshold = DISTANCE_THRESHOLD
 
     enriched = []
-    for gregorian_date, original_date_str_parsed, name, event_type in relevant_upcoming_dates:
+    for gregorian_date, original_date_str_parsed, name, event_type, year in relevant_upcoming_dates:
         node = None
         for k, v in id2name.items():
             if v == name:
@@ -195,10 +235,10 @@ def main():
         if PERSONID and node:
             dist, path = distance_and_path(G, PERSONID, node)
             enriched.append((dist if dist is not None else 999, path,
-                             gregorian_date, original_date_str_parsed, name, event_type))
+                             gregorian_date, original_date_str_parsed, name, event_type, year))
         else:
             enriched.append((999, [], gregorian_date,
-                             original_date_str_parsed, name, event_type))
+                             original_date_str_parsed, name, event_type, year))
 
     # ---------- build GitHub issue ----------
     parasha = get_parasha_for_week(today_gregorian)
