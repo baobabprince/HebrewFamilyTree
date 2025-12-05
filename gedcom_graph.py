@@ -10,7 +10,7 @@ def build_graph(file_path):
     G = nx.Graph()
 
     gedcom_parser = Parser()
-    gedcom_parser.parse_file(file_path)
+    gedcom_parser.parse_file(file_path, strict=False)
     root = gedcom_parser.get_root_child_elements()
 
     indi = {}

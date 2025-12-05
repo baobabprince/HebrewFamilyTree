@@ -115,7 +115,7 @@ if __name__ == "__main__":
                     path = find_path(graph, person_id_env, indi_id)
                     if path:
                         path_names = [get_person_name(individuals[node_id]) for node_id in path]
-                        event_desc += f" (Distance: {current_distance}, Path: {" -> ".join(path_names)})
+                        event_desc += f" (Distance: {current_distance}, Path: {' -> '.join(path_names)})"
                 issue_body.append(event_desc)
 
         # Death days
@@ -130,7 +130,7 @@ if __name__ == "__main__":
                     path = find_path(graph, person_id_env, indi_id)
                     if path:
                         path_names = [get_person_name(individuals[node_id]) for node_id in path]
-                        event_desc += f" (Distance: {current_distance}, Path: {" -> ".join(path_names)})
+                        event_desc += f" (Distance: {current_distance}, Path: {' -> '.join(path_names)})"
                 issue_body.append(event_desc)
 
     # Marriage days
@@ -158,13 +158,13 @@ if __name__ == "__main__":
                     path = find_path(graph, person_id_env, husband_id)
                     if path:
                         path_names = [get_person_name(individuals[node_id]) for node_id in path]
-                        event_desc += f" (Husband Distance: {distances.get(husband_id)}, Path: {" -> ".join(path_names)})"
+                        event_desc += f" (Husband Distance: {distances.get(husband_id)}, Path: {' -> '.join(path_names)})"
                 
                 if wife_id and distances.get(wife_id, -1) > DISTANCE_THRESHOLD:
                     path = find_path(graph, person_id_env, wife_id)
                     if path:
                         path_names = [get_person_name(individuals[node_id]) for node_id in path]
-                        event_desc += f" (Wife Distance: {distances.get(wife_id)}, Path: {" -> ".join(path_names)})"
+                        event_desc += f" (Wife Distance: {distances.get(wife_id)}, Path: {' -> '.join(path_names)})"
                 
                 issue_body.append(event_desc)
 
