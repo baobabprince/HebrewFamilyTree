@@ -102,8 +102,7 @@ def get_relationship(p1_id, p2_id, parser):
                     return "daughter (of)"
 
     return "relative"
-import re
-from hebcal.hebcal import HebrewDate
+from hebcal import HebrewDate
 
 def get_hebrew_year_from_date_str(date_str):
     if not date_str or not date_str.startswith("@#DHEBREW@"):
