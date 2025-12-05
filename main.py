@@ -102,9 +102,74 @@ def get_relationship(p1_id, p2_id, parser):
                     return "daughter (of)"
 
     return "relative"
-def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold, person_id, parser):
+import re
+from hebcal.hebcal import HebrewDate
+
+def get_hebrew_year_from_date_str(date_str):
+    if not date_str or not date_str.startswith("@#DHEBREW@"):
+        return None
+    parts = date_str.split()
+    if len(parts) > 2:
+        try:
+            return int(parts[-1])
+        except (ValueError, IndexError):
+            return None
+    return None
+
+def get_event_details(event, individuals, current_hebrew_year):
+    years_passed = None
+    details = ""
+    if event.get('year'):
+        years_passed = current_hebrew_year - event['year']
+
+    if event['event_type'] == 'יום הולדת' and not individuals.get(event['individual_id'], {}).get('death_date'):
+        if years_passed is not None:
+            age = years_passed
+            details = f"🎂 ({years_passed} שנים, גיל {age})"
+        else:
+            details = "🎂"
+    elif event['event_type'] == 'נישואין':
+        detail_parts = []
+        if years_passed is not None:
+            detail_parts.append(f"{years_passed} שנים")
+
+        husband_id = event.get('husband_id')
+        wife_id = event.get('wife_id')
+
+        if husband_id and not individuals.get(husband_id, {}).get('death_date'):
+            birth_year = get_hebrew_year_from_date_str(individuals.get(husband_id, {}).get('birth_date'))
+            if birth_year:
+                age = current_hebrew_year - birth_year
+                detail_parts.append(f"גיל הבעל: {age}")
+
+        if wife_id and not individuals.get(wife_id, {}).get('death_date'):
+            birth_year = get_hebrew_year_from_date_str(individuals.get(wife_id, {}).get('birth_date'))
+            if birth_year:
+                age = current_hebrew_year - birth_year
+                detail_parts.append(f"גיל האישה: {age}")
+
+        details = f"💍 ({', '.join(detail_parts)})" if detail_parts else "💍"
+    elif event['event_type'] == 'יארצייט':
+        detail_parts = []
+        if years_passed is not None:
+            detail_parts.append(f"{years_passed} שנים")
+
+        birth_year = get_hebrew_year_from_date_str(individuals.get(event['individual_id'], {}).get('birth_date'))
+        death_year = event.get('year')
+
+        if birth_year and death_year:
+            age_at_death = death_year - birth_year
+            detail_parts.append(f"בן {age_at_death} בפטירתו")
+
+        details = f"🕯️ ({', '.join(detail_parts)})" if detail_parts else "🕯️"
+
+    if years_passed and years_passed > 0 and years_passed % 19 == 0:
+        details += " (שנת י\"ט)"
+
+    return details
+def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold, person_id, parser, individuals):
     """
-    enriched_list: list of tuples (distance, path, gregorian_date, heb_date_str, name, event_type)
+    enriched_list: list of tuples (distance, path, gregorian_date, event_dict)
     id2name      : dict mapping GEDCOM pointer -> display name
     person_id_from_env: The PERSONID value read from the environment in the main function.
     """
@@ -117,13 +182,14 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
     # sort by date (closest first), then by distance
     enriched_list.sort(key=lambda t: (t[2], t[0]))
 
-    for dist, path, gregorian_date, original_date_str_parsed, name, event_type in enriched_list:
+    for dist, path, gregorian_date, event in enriched_list:
         hebrew_weekday = HEBREW_WEEKDAYS.get(gregorian_date.strftime('%A'), gregorian_date.strftime('%A'))
-        event_name = HEBREW_EVENT_NAMES.get(event_type, event_type)
+        event_name = HEBREW_EVENT_NAMES.get(event['event_type'], event['event_type'])
+        event_details = get_event_details(event, individuals, HebrewDate.today().year)
 
-        issue_body += f"#### **{hebrew_weekday}, {original_date_str_parsed}**\n"
+        issue_body += f"#### **{hebrew_weekday}, {event['hebrew_date_formatted']} {event_details}**\n"
         issue_body += f"* **אירוע**: `{event_name}`\n"
-        issue_body += f"* **אדם/משפחה**: `{name}`\n"
+        issue_body += f"* **אדם/משפחה**: `{event['name']}`\n"
 
         # include distance & path only if PERSONID was supplied and distance > 8
         if person_id and dist is not None and dist > distance_threshold and path:
@@ -163,17 +229,17 @@ def main():
     logging.info("Step 3: Processing GEDCOM …")
     person_id = os.environ.get('PERSONID')
     distance_threshold = os.environ.get('DISTANCE_THRESHOLD')
-    processed_rows = process_gedcom_file(FIXED_GEDCOM_FILE, OUTPUT_CSV_FILE)
-    logging.debug(f"Processed rows from GEDCOM: {processed_rows}")
+    processed_events, individuals = process_gedcom_file(FIXED_GEDCOM_FILE, OUTPUT_CSV_FILE)
+    logging.debug(f"Processed events from GEDCOM: {processed_events}")
 
-    if not processed_rows:
+    if not processed_events:
         logging.info("No events found in GEDCOM.")
         return
 
     today_gregorian = date.today()
     hebrew_week_dates_map = get_hebrew_date_range_api(today_gregorian, 7)
 
-    relevant_upcoming_dates = find_relevant_hebrew_dates(processed_rows, hebrew_week_dates_map)
+    relevant_upcoming_dates = find_relevant_hebrew_dates(processed_events, hebrew_week_dates_map)
 
     # ---------- build graph for distance / path ----------
     gedcom_parser = Parser()
@@ -186,24 +252,22 @@ def main():
         distance_threshold = DISTANCE_THRESHOLD
 
     enriched = []
-    for gregorian_date, original_date_str_parsed, name, event_type in relevant_upcoming_dates:
-        node = None
-        for k, v in id2name.items():
-            if v == name:
-                node = k
-                break
-        if PERSONID and node:
-            dist, path = distance_and_path(G, PERSONID, node)
-            enriched.append((dist if dist is not None else 999, path,
-                             gregorian_date, original_date_str_parsed, name, event_type))
+    for gregorian_date, event in relevant_upcoming_dates:
+        node_id = event.get('individual_id') or event.get('husband_id') # Use husband_id for family events as a representative
+
+        dist, path = None, None
+        if PERSONID and node_id and node_id in G:
+            dist, path = distance_and_path(G, PERSONID, node_id)
+
+        if dist is not None:
+            enriched.append((dist, path, gregorian_date, event))
         else:
-            enriched.append((999, [], gregorian_date,
-                             original_date_str_parsed, name, event_type))
+            enriched.append((999, [], gregorian_date, event))
 
     # ---------- build GitHub issue ----------
     parasha = get_parasha_for_week(today_gregorian)
     issue_title = f"{parasha} - תאריכים עבריים קרובים: {today_gregorian.strftime('%Y-%m-%d')}"
-    issue_body = build_issue_body(enriched, id2name, today_gregorian, distance_threshold, person_id, gedcom_parser)
+    issue_body = build_issue_body(enriched, id2name, today_gregorian, distance_threshold, person_id, parser, individuals)
 
     github_output_path = os.getenv("GITHUB_OUTPUT")
     if github_output_path:

@@ -74,7 +74,7 @@ def get_name_from_individual(element):
             return child.get_value().replace("/", "").strip()
     return "Unknown Name"
 
-def process_individual_events(element, name, dates):
+def process_individual_events(element, name, events):
     """Processes birth, death, and other events for an individual."""
     individual_event_tags = [
         "BIRT", "DEAT", "CHR", "BURI", "CREM", "ADOP", "BAPM",
@@ -84,9 +84,9 @@ def process_individual_events(element, name, dates):
     for child in element.get_child_elements():
         if child.get_tag() in individual_event_tags:
             event_type_str = HEBREW_EVENT_NAMES.get(child.get_tag(), child.get_tag())
-            process_event(child, name, dates, event_type=event_type_str)
+            process_event(child, name, events, event_type=event_type_str, individual_id=element.get_pointer())
 
-def process_family_events(element, individuals, dates):
+def process_family_events(element, individuals, events):
     """Processes marriage and other events for a family."""
     husband_id = None
     wife_id = None
@@ -97,8 +97,8 @@ def process_family_events(element, individuals, dates):
         elif child.get_tag() == 'WIFE':
             wife_id = child.get_value()
 
-    husband_name = individuals.get(husband_id, "Unknown Husband")
-    wife_name = individuals.get(wife_id, "Unknown Wife")
+    husband_name = individuals.get(husband_id, {}).get('name', "Unknown Husband")
+    wife_name = individuals.get(wife_id, {}).get('name', "Unknown Wife")
     couple_name = f"{husband_name} & {wife_name}"
 
     family_event_tags = ["MARR", "DIV", "ANUL", "ENGA", "MARB", "MARC", "MARL", "MARS", "EVEN"]
@@ -107,9 +107,9 @@ def process_family_events(element, individuals, dates):
             event_type_str = child.get_tag()
             if child.get_tag() == "MARR":
                 event_type_str = HEBREW_EVENT_NAMES.get(child.get_tag(), child.get_tag())
-            process_event(child, couple_name, dates, event_type=event_type_str)
+            process_event(child, couple_name, events, event_type=event_type_str, husband_id=husband_id, wife_id=wife_id)
 
-def process_event(event_element, name, dates, event_type=None):
+def process_event(event_element, name, events, event_type=None, individual_id=None, husband_id=None, wife_id=None):
     """Extracts and processes date from an event element."""
     for child in event_element.get_child_elements():
         if child.get_tag() == "DATE":
@@ -124,8 +124,6 @@ def process_event(event_element, name, dates, event_type=None):
                 parsing_date_str = date_str[10:].strip()
                 logging.debug(f"parsing_date_str (Hebrew): {parsing_date_str}")
             else:
-                # If it's not a Hebrew date, we can skip it for now, or process it if no Hebrew date is found.
-                # For this fix, we prioritize Hebrew dates.
                 continue
             
             if not parsing_date_str:
@@ -159,6 +157,7 @@ def process_event(event_element, name, dates, event_type=None):
 
             day = 1
             month_abbr = None
+            year = None
 
             if len(temp_date_parts) >= 2:
                 day_str = temp_date_parts[0].replace('"', '').strip()
@@ -177,6 +176,11 @@ def process_event(event_element, name, dates, event_type=None):
                 if month_abbr_candidate in HEBREW_MONTHS_MAP:
                     day = day_candidate
                     month_abbr = month_abbr_candidate
+                    if len(temp_date_parts) > 2:
+                        try:
+                            year = int(temp_date_parts[2])
+                        except ValueError:
+                            year = None # Or handle as an error
             elif len(temp_date_parts) == 1:
                 month_abbr_candidate = temp_date_parts[0].upper()
                 if month_abbr_candidate in HEBREW_MONTHS_MAP:
@@ -191,7 +195,18 @@ def process_event(event_element, name, dates, event_type=None):
                 hebrew_date_formatted = f"{get_hebrew_day_string(day)} {hebrew_month_name}"
 
                 logging.debug(f"Appending date: month_num={month_num}, day={day}, hebrew_date_formatted='{hebrew_date_formatted}', name='{name}', event_tag_name='{hebrew_date_formatted}'")
-                dates.append((month_num, day, hebrew_date_formatted, f"{name} - {event_tag_name}: {hebrew_date_formatted}"))
+                event_data = {
+                    'month': month_num,
+                    'day': day,
+                    'year': year,
+                    'hebrew_date_formatted': hebrew_date_formatted,
+                    'name': name,
+                    'event_type': event_tag_name,
+                    'individual_id': individual_id,
+                    'husband_id': husband_id,
+                    'wife_id': wife_id
+                }
+                events.append(event_data)
             else:
                 logging.debug(f"Month abbreviation '{month_abbr}' not found in HEBREW_MONTHS_MAP.")
 try:
@@ -219,33 +234,38 @@ def process_gedcom_file(file_path, output_csv_file):
 
     root_child_elements = gedcom_parser.get_root_child_elements()
 
-    dates = []
+    events = []
     individuals = {}
 
     for element in root_child_elements:
         if element.get_tag() == "INDI":
             individual_id = element.get_pointer()
             name = get_name_from_individual(element)
-            individuals[individual_id] = name
+            individuals[individual_id] = {'name': name, 'birth_date': None, 'death_date': None}
+            # Eagerly process birth and death to populate dates for later logic
+            for child in element.get_child_elements():
+                if child.get_tag() == 'BIRT':
+                    for date_child in child.get_child_elements():
+                        if date_child.get_tag() == 'DATE':
+                            individuals[individual_id]['birth_date'] = date_child.get_value()
+                elif child.get_tag() == 'DEAT':
+                    for date_child in child.get_child_elements():
+                        if date_child.get_tag() == 'DATE':
+                            individuals[individual_id]['death_date'] = date_child.get_value()
 
     for element in root_child_elements:
         if element.get_tag() == "INDI":
-            name = individuals.get(element.get_pointer(), "Unknown Individual")
-            process_individual_events(element, name, dates)
+            name = individuals.get(element.get_pointer())['name']
+            process_individual_events(element, name, events)
         elif element.get_tag() == "FAM":
-            process_family_events(element, individuals, dates)
+            process_family_events(element, individuals, events)
 
-    dates.sort(key=lambda x: (x[0], x[1]))
+    events.sort(key=lambda x: (x['month'], x['day']))
 
     csv_data_rows = []
-    for _, _, original_date_str_parsed, output_str in dates:
-        try:
-            name, event_description = output_str.split(" - ", 1)
-            event_type = event_description.split(":")[0].strip()
-            csv_data_rows.append([original_date_str_parsed, name, event_type])
-        except ValueError:
-            logging.warning(f"Could not parse output string for CSV: {output_str}")
-            csv_data_rows.append([original_date_str_parsed, "Error in processing", "Error"])
+    for event in events:
+        csv_data_rows.append([event['hebrew_date_formatted'], event['name'], event['event_type']])
+
 
     with open(output_csv_file, 'w', newline='', encoding='utf-8') as csvfile:
         csv_writer = csv.writer(csvfile)
@@ -253,5 +273,5 @@ def process_gedcom_file(file_path, output_csv_file):
         csv_writer.writerows(csv_data_rows)
     
     logging.info(f"Data successfully written to {output_csv_file}")
-    logging.debug(f"Dates list before returning: {dates}")
-    return csv_data_rows
+    logging.debug(f"Events list before returning: {events}")
+    return events, individuals
