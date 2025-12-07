@@ -2,8 +2,6 @@ import os
 import sys
 from collections import deque
 from gedcom.parser import Parser
-from gedcom.element.individual import IndividualElement
-from gedcom.element.family import FamilyElement
 from constants import LOG_ALL_PATHS_DISTANCE_THRESHOLD
 
 def build_family_graph(gedcom_file_path):

@@ -9,7 +9,6 @@ New features compared to original:
 """
 
 import os
-import json
 import logging
 from datetime import date, timedelta
 
@@ -102,11 +101,12 @@ def get_relationship(p1_id, p2_id, parser):
                     return "daughter (of)"
 
     return "relative"
-def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold, person_id, parser):
+def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold, person_id, parser, individual_details):
     """
     enriched_list: list of tuples (distance, path, gregorian_date, heb_date_str, name, event_type)
     id2name      : dict mapping GEDCOM pointer -> display name
     person_id_from_env: The PERSONID value read from the environment in the main function.
+    individual_details: dict with birth/death years
     """
     issue_body = (
         f"## תאריכים עבריים קרובים "
@@ -121,9 +121,28 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
         hebrew_weekday = HEBREW_WEEKDAYS.get(gregorian_date.strftime('%A'), gregorian_date.strftime('%A'))
         event_name = HEBREW_EVENT_NAMES.get(event_type, event_type)
 
-        issue_body += f"#### **{hebrew_weekday}, {original_date_str_parsed}**\n"
+        # --- Emojis and Age ---
+        emoji = ""
+        age_str = ""
+        if event_type == HEBREW_EVENT_NAMES["BIRT"]:
+            emoji = "🎂"
+            if name in individual_details and individual_details[name].get("birth_year"):
+                birth_year = individual_details[name]["birth_year"]
+                age = gregorian_date.year - birth_year
+                age_str = f" (גיל {age})"
+        elif event_type == HEBREW_EVENT_NAMES["DEAT"]:
+            emoji = "🪦"
+            if name in individual_details and individual_details[name].get("birth_year") and individual_details[name].get("death_year"):
+                birth_year = individual_details[name]["birth_year"]
+                death_year = individual_details[name]["death_year"]
+                age = death_year - birth_year
+                age_str = f" (נפטר בגיל {age})"
+        elif event_type == HEBREW_EVENT_NAMES["MARR"]:
+            emoji = "💑"
+
+        issue_body += f"#### **{emoji} {hebrew_weekday}, {original_date_str_parsed}**\n"
         issue_body += f"* **אירוע**: `{event_name}`\n"
-        issue_body += f"* **אדם/משפחה**: `{name}`\n"
+        issue_body += f"* **אדם/משפחה**: `{name}{age_str}`\n"
 
         # include distance & path only if PERSONID was supplied and distance > 8
         if person_id and dist is not None and dist > distance_threshold and path:
@@ -163,7 +182,7 @@ def main():
     logging.info("Step 3: Processing GEDCOM …")
     person_id = os.environ.get('PERSONID')
     distance_threshold = os.environ.get('DISTANCE_THRESHOLD')
-    processed_rows = process_gedcom_file(FIXED_GEDCOM_FILE, OUTPUT_CSV_FILE)
+    processed_rows, individual_details = process_gedcom_file(FIXED_GEDCOM_FILE, OUTPUT_CSV_FILE)
     logging.debug(f"Processed rows from GEDCOM: {processed_rows}")
 
     if not processed_rows:
@@ -203,7 +222,7 @@ def main():
     # ---------- build GitHub issue ----------
     parasha = get_parasha_for_week(today_gregorian)
     issue_title = f"{parasha} - תאריכים עבריים קרובים: {today_gregorian.strftime('%Y-%m-%d')}"
-    issue_body = build_issue_body(enriched, id2name, today_gregorian, distance_threshold, person_id, gedcom_parser)
+    issue_body = build_issue_body(enriched, id2name, today_gregorian, distance_threshold, person_id, gedcom_parser, individual_details)
 
     github_output_path = os.getenv("GITHUB_OUTPUT")
     if github_output_path:

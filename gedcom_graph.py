@@ -1,7 +1,6 @@
 """
 Build a directed graph from the GEDCOM and compute distances / paths.
 """
-import logging
 import networkx as nx
 from gedcom.parser import Parser
 

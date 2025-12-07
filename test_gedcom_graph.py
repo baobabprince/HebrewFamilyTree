@@ -1,5 +1,4 @@
 import unittest
-import networkx as nx
 from gedcom_graph import build_graph, distance_and_path
 
 class TestGedcomGraph(unittest.TestCase):

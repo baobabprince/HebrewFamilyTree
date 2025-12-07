@@ -1,8 +1,8 @@
-from datetime import date, timedelta
+from datetime import timedelta
 import json
 import requests
 import logging
-from constants import HEBCAL_API_BASE_URL, HEBCAL_FULL_MONTH_NAMES_TO_NUM, HEBREW_MONTHS_MAP, HEBREW_DAY_TO_NUM, HEBREW_MONTH_NAMES_TO_NUM
+from constants import HEBCAL_API_BASE_URL, HEBCAL_FULL_MONTH_NAMES_TO_NUM, HEBREW_DAY_TO_NUM, HEBREW_MONTH_NAMES_TO_NUM
 
 def get_hebrew_date_from_api(gregorian_date_obj):
     """

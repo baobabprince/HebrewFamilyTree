@@ -2,7 +2,7 @@ import re
 import csv
 import logging
 from gedcom.parser import Parser
-from constants import HEBREW_MONTHS_MAP, HEBREW_EVENT_NAMES, HEBREW_MONTH_NAMES_FULL, HEBREW_DAY_TO_NUM, HEBREW_MONTH_NAMES_TO_NUM
+from constants import HEBREW_MONTHS_MAP, HEBREW_EVENT_NAMES, HEBREW_MONTH_NAMES_FULL, HEBREW_DAY_TO_NUM
 
 def get_hebrew_day_string(day):
     """Converts a day number to its Hebrew letter representation."""
@@ -74,7 +74,7 @@ def get_name_from_individual(element):
             return child.get_value().replace("/", "").strip()
     return "Unknown Name"
 
-def process_individual_events(element, name, dates):
+def process_individual_events(element, name, dates, individual_details):
     """Processes birth, death, and other events for an individual."""
     individual_event_tags = [
         "BIRT", "DEAT", "CHR", "BURI", "CREM", "ADOP", "BAPM",
@@ -84,7 +84,13 @@ def process_individual_events(element, name, dates):
     for child in element.get_child_elements():
         if child.get_tag() in individual_event_tags:
             event_type_str = HEBREW_EVENT_NAMES.get(child.get_tag(), child.get_tag())
-            process_event(child, name, dates, event_type=event_type_str)
+            gregorian_year = process_event(child, name, dates, event_type=event_type_str)
+
+            if gregorian_year:
+                if child.get_tag() == "BIRT":
+                    individual_details[name]["birth_year"] = gregorian_year
+                elif child.get_tag() == "DEAT":
+                    individual_details[name]["death_year"] = gregorian_year
 
 def process_family_events(element, individuals, dates):
     """Processes marriage and other events for a family."""
@@ -111,9 +117,15 @@ def process_family_events(element, individuals, dates):
 
 def process_event(event_element, name, dates, event_type=None):
     """Extracts and processes date from an event element."""
+    gregorian_year = None
     for child in event_element.get_child_elements():
         if child.get_tag() == "DATE":
             date_str = child.get_value()
+
+            # --- Extract Gregorian Year ---
+            gregorian_match = re.search(r'(\d{4})', date_str)
+            if gregorian_match:
+                gregorian_year = int(gregorian_match.group(1))
 
             logging.debug(f"date_str: {date_str}")
             if not date_str:
@@ -194,17 +206,8 @@ def process_event(event_element, name, dates, event_type=None):
                 dates.append((month_num, day, hebrew_date_formatted, f"{name} - {event_tag_name}: {hebrew_date_formatted}"))
             else:
                 logging.debug(f"Month abbreviation '{month_abbr}' not found in HEBREW_MONTHS_MAP.")
-try:
-    from gedcom.parser import Parser
-except ImportError:
-    logging.warning("gedcom.parser.Parser not found. Using a dummy class. "
-          "Ensure your GEDCOM parsing library is correctly set up.")
-    class Parser:
-        def parse_file(self, file_path):
-            logging.info(f"Dummy Parser: Parsing file {file_path}")
-            pass
-        def get_root_child_elements(self):
-            return []
+    return gregorian_year
+
 
 def process_gedcom_file(file_path, output_csv_file):
     """
@@ -215,23 +218,26 @@ def process_gedcom_file(file_path, output_csv_file):
         gedcom_parser.parse_file(file_path)
     except Exception as e:
         logging.error(f"Error parsing GEDCOM file {file_path}: {e}")
-        return []
+        return [], {}
 
     root_child_elements = gedcom_parser.get_root_child_elements()
 
     dates = []
     individuals = {}
+    individual_details = {}  # Store birth and death years
 
     for element in root_child_elements:
         if element.get_tag() == "INDI":
             individual_id = element.get_pointer()
             name = get_name_from_individual(element)
             individuals[individual_id] = name
+            individual_details[name] = {"birth_year": None, "death_year": None}
 
     for element in root_child_elements:
         if element.get_tag() == "INDI":
             name = individuals.get(element.get_pointer(), "Unknown Individual")
-            process_individual_events(element, name, dates)
+            # --- Modified to pass individual_details ---
+            process_individual_events(element, name, dates, individual_details)
         elif element.get_tag() == "FAM":
             process_family_events(element, individuals, dates)
 
@@ -254,4 +260,5 @@ def process_gedcom_file(file_path, output_csv_file):
     
     logging.info(f"Data successfully written to {output_csv_file}")
     logging.debug(f"Dates list before returning: {dates}")
-    return csv_data_rows
+    return csv_data_rows, individual_details
+

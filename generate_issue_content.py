@@ -1,13 +1,10 @@
 import os
 import sys
-import csv
 from datetime import date, timedelta
 from hebcal_api import get_hebrew_date_from_api
 from gedcom.parser import Parser
-from gedcom.element.individual import IndividualElement
-from gedcom.element.family import FamilyElement
-from calculate_distance import build_family_graph, get_person_name, calculate_distances, find_path
-from constants import HEBREW_MONTHS_MAP, HEBREW_EVENT_NAMES, HEBREW_MONTH_NAMES_FULL, DISTANCE_THRESHOLD
+from calculate_distance import build_family_graph, get_person_name, find_path
+from constants import DISTANCE_THRESHOLD
 from gedcom_utils import get_hebrew_date_from_gedcom_date, get_hebrew_day_string, get_hebrew_month_name
 
 def get_next_hebrew_dates(num_days=8):
@@ -115,7 +112,7 @@ if __name__ == "__main__":
                     path = find_path(graph, person_id_env, indi_id)
                     if path:
                         path_names = [get_person_name(individuals[node_id]) for node_id in path]
-                        event_desc += f" (Distance: {current_distance}, Path: {" -> ".join(path_names)})
+                        event_desc += f" (Distance: {current_distance}, Path: {' -> '.join(path_names)})"
                 issue_body.append(event_desc)
 
         # Death days
@@ -130,7 +127,7 @@ if __name__ == "__main__":
                     path = find_path(graph, person_id_env, indi_id)
                     if path:
                         path_names = [get_person_name(individuals[node_id]) for node_id in path]
-                        event_desc += f" (Distance: {current_distance}, Path: {" -> ".join(path_names)})
+                        event_desc += f" (Distance: {current_distance}, Path: {' -> '.join(path_names)})"
                 issue_body.append(event_desc)
 
     # Marriage days

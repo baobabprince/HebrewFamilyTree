@@ -5,7 +5,6 @@ import logging
 import shutil
 from google.oauth2.credentials import Credentials
 from google.oauth2 import service_account
-from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -48,7 +47,7 @@ def download_gedcom_from_drive(file_id, destination_path):
         if os.path.exists('tree.ged'):
             if os.path.abspath('tree.ged') != os.path.abspath(destination_path):
                 shutil.copy('tree.ged', destination_path)
-            logging.info(f"Using local GEDCOM file: tree.ged")
+            logging.info("Using local GEDCOM file: tree.ged")
             return True
         else:
             logging.error("Local GEDCOM file 'tree.ged' not found.")

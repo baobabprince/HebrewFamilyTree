@@ -40,8 +40,8 @@ HEBREW_WEEKDAYS = {
 }
 
 HEBREW_EVENT_NAMES = {
-    "BIRT": "יומולדת",
-    "DEAT": "יאהרצייט",
+    "BIRT": "יום הולדת",
+    "DEAT": "יארצייט",
     "MARR": "יום נישואין"
 }
 
