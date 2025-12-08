@@ -10,6 +10,9 @@ HEBREW_MONTHS_MAP = {
     # Adding full month names for direct lookup
     "TISHREI": 1, "CHESHVAN": 2, "KISLEV": 3, "TEVET": 4, "SHEVAT": 5,
     "ADAR": 6, "NISAN": 7, "IYYAR": 8, "SIVAN": 9, "TAMUZ": 10, "AV": 11, "ELUL": 12,
+    # Adding Hebrew month names
+    "תשרי": 1, "חשון": 2, "כסלו": 3, "טבת": 4, "שבט": 5, "אדר": 6, "אדר א": 61, "אדר ב": 62,
+    "ניסן": 7, "אייר": 8, "סיון": 9, "תמוז": 10, "אב": 11, "אלול": 12,
 }
 
 HEBCAL_FULL_MONTH_NAMES_TO_NUM = {

@@ -48,6 +48,38 @@ def get_hebrew_date_from_api(gregorian_date_obj):
         logging.error(f"Error decoding JSON from Hebcal API for {gregorian_date_obj}. Response: {response.text[:200]}...")
         return None
 
+def get_hebrew_year_from_api(gregorian_date_obj):
+    """
+    Fetches the Hebrew year for a given Gregorian date using Hebcal API.
+    Returns hebrew_year or None on failure.
+    """
+    params = {
+        "cfg": "json",
+        "gy": gregorian_date_obj.year,
+        "gm": gregorian_date_obj.month,
+        "gd": gregorian_date_obj.day,
+        "tzid": "Asia/Jerusalem"
+    }
+
+    try:
+        response = requests.get(HEBCAL_API_BASE_URL, params=params, timeout=10)
+        response.raise_for_status()
+
+        data = response.json()
+
+        if "hy" in data:
+            return int(data["hy"])
+        else:
+            logging.error(f"API response missing 'hy' key for {gregorian_date_obj}: {data}")
+            return None
+
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error fetching Hebrew year from Hebcal API for {gregorian_date_obj}: {e}")
+        return None
+    except json.JSONDecodeError:
+        logging.error(f"Error decoding JSON from Hebcal API for {gregorian_date_obj}. Response: {response.text[:200]}...")
+        return None
+
 def get_hebrew_date_range_api(start_gregorian_date, num_days):
     """
     Generates a mapping of (Hebrew month number, Hebrew day) tuples to Gregorian date objects

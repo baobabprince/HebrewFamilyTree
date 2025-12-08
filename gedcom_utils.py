@@ -178,8 +178,12 @@ def process_event(event_element, name, dates, event_type=None):
             # If no two-word month found, try single-word month names
             if month_abbr is None:
                 for i in range(len(temp_date_parts)):
-                    single_month_candidate = temp_date_parts[i].upper()
-                    if single_month_candidate in HEBREW_MONTHS_MAP:
+                    single_month_candidate = temp_date_parts[i]
+                    if single_month_candidate.upper() in HEBREW_MONTHS_MAP:
+                        month_abbr = single_month_candidate.upper()
+                        month_found_index = i
+                        break
+                    elif single_month_candidate in HEBREW_MONTHS_MAP:
                         month_abbr = single_month_candidate
                         month_found_index = i
                         break
@@ -220,15 +224,15 @@ def process_gedcom_file(file_path, output_csv_file):
     root_child_elements = gedcom_parser.get_root_child_elements()
 
     dates = []
-    individuals = {{}}
-    individual_details = {{}}  # Store birth and death years
+    individuals = {}
+    individual_details = {}  # Store birth and death years
 
     for element in root_child_elements:
         if element.get_tag() == "INDI":
             individual_id = element.get_pointer()
             name = get_name_from_individual(element)
             individuals[individual_id] = name
-            individual_details[name] = {{"birth_year": None, "death_year": None}}
+            individual_details[name] = {"birth_year": None, "death_year": None}
 
     for element in root_child_elements:
         if element.get_tag() == "INDI":

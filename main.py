@@ -18,7 +18,7 @@ from constants import (
 )
 from google_drive_utils import download_gedcom_from_drive
 from gedcom_utils import fix_gedcom_format, process_gedcom_file
-from hebcal_api import get_hebrew_date_range_api, find_relevant_hebrew_dates, get_parasha_for_week
+from hebcal_api import get_hebrew_date_range_api, find_relevant_hebrew_dates, get_parasha_for_week, get_hebrew_year_from_api
 from gedcom.parser import Parser
 from gedcom_graph import build_graph, distance_and_path
 # ------------------------------------------------------------------ logging
@@ -128,8 +128,10 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
             emoji = "🎂"
             if name in individual_details and individual_details[name].get("birth_year"):
                 birth_year = individual_details[name]["birth_year"]
-                age = gregorian_date.year - birth_year
-                age_str = f" (גיל {age})"
+                hebrew_year = get_hebrew_year_from_api(gregorian_date)
+                if hebrew_year:
+                    age = hebrew_year - birth_year
+                    age_str = f" (גיל {age})"
         elif event_type == HEBREW_EVENT_NAMES["DEAT"]:
             emoji = "🪦"
             if name in individual_details and individual_details[name].get("birth_year") and individual_details[name].get("death_year"):
