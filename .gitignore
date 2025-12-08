@@ -5,6 +5,8 @@ dates.csv
 distances.txt
 geocoded_tree.ged
 app.log
+output.log
+test.ged
 
 # Ignore Python cache files
 __pycache__/
