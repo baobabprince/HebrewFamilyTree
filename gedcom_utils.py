@@ -4,6 +4,16 @@ import logging
 from gedcom.parser import Parser
 from constants import HEBREW_MONTHS_MAP, HEBREW_EVENT_NAMES, HEBREW_MONTH_NAMES_FULL, HEBREW_DAY_TO_NUM
 
+# Configure logging for gedcom_utils
+logger = logging.getLogger(__name__)
+if not logger.handlers:
+    logger.setLevel(logging.INFO) # Keep INFO for normal operation
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+
+
 def get_hebrew_day_string(day):
     """Converts a day number to its Hebrew letter representation."""
     hebrew_numerals = {
@@ -12,9 +22,6 @@ def get_hebrew_day_string(day):
         20: "כ", 21: "כא", 22: "כב", 23: "כג", 24: "כד", 25: "כה", 26: "כו", 27: "כז", 28: "כח", 29: "כט", 30: "ל"
     }
     return hebrew_numerals.get(day, str(day))
-
-# Ensure logging is configured if this function is run stand-alone
-# logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def fix_gedcom_format(input_file, output_file):
     """
@@ -25,7 +32,7 @@ def fix_gedcom_format(input_file, output_file):
         with open(input_file, "r", encoding="utf-8-sig", errors="replace") as file:
             lines = file.readlines()
     except Exception as e:
-        logging.error(f"Error reading input file {input_file}: {e}")
+        logger.error(f"Error reading input file {input_file}: {e}")
         return
 
     fixed_lines = []
@@ -48,23 +55,24 @@ def fix_gedcom_format(input_file, output_file):
             if xref_id:
                 parts.append(xref_id)
             parts.append(tag)
+            # Normalize spaces within the value part as well
             if value:
-                parts.append(value)
+                parts.append(" ".join(value.split())) # FIX: Normalize spaces in value
             
             fixed_line = " ".join(parts)
             fixed_lines.append(fixed_line)
         else:
             # *Crucial Change*: Instead of keeping the original line, drop it and log the warning.
-            logging.warning(f"Dropping non-GEDCOM-compliant line: {line}")
+            logger.warning(f"Dropping non-GEDCOM-compliant line: {line}")
             # Do NOT append 'line' to 'fixed_lines'
 
     try:
         with open(output_file, "w", encoding="utf-8") as file:
             for line_to_write in fixed_lines:
                 file.write(line_to_write + "\n")
-        logging.info(f"Successfully fixed and saved GEDCOM to {output_file}")
+        logger.info(f"Successfully fixed and saved GEDCOM to {output_file}")
     except Exception as e:
-        logging.error(f"Error writing output file {output_file}: {e}")
+        logger.error(f"Error writing output file {output_file}: {e}")
 
 
 def get_name_from_individual(element):
@@ -122,90 +130,79 @@ def process_event(event_element, name, dates, event_type=None):
         if child.get_tag() == "DATE":
             date_str = child.get_value()
 
-            # --- Extract Gregorian Year ---
-            gregorian_match = re.search(r'(\d{4})', date_str)
-            if gregorian_match:
-                gregorian_year = int(gregorian_match.group(1))
+            # --- Extract Gregorian Year from within parentheses, if present ---
+            paren_match = re.search(r'\((.*?)\)', date_str)
+            if paren_match:
+                content_in_paren = paren_match.group(1)
+                year_in_paren_match = re.search(r'(\d{4})', content_in_paren)
+                if year_in_paren_match:
+                    gregorian_year = int(year_in_paren_match.group(1))
 
-            logging.debug(f"date_str: {date_str}")
             if not date_str:
-                logging.debug("date_str is empty.")
                 continue
 
-            if date_str.startswith("@#DHEBREW@"):
-                parsing_date_str = date_str[10:].strip()
-                logging.debug(f"parsing_date_str (Hebrew): {parsing_date_str}")
-            else:
-                # If it's not a Hebrew date, we can skip it for now, or process it if no Hebrew date is found.
-                # For this fix, we prioritize Hebrew dates.
-                continue
+            if not date_str.startswith("@#DHEBREW@"):
+                # If it's not a Hebrew date, try to extract a simple 4-digit Gregorian year
+                # and then skip further processing for Hebrew dates.
+                if gregorian_year is None: # If not found in (YYYY) format
+                    simple_greg_match = re.search(r'(\d{4})', date_str)
+                    if simple_greg_match:
+                        gregorian_year = int(simple_greg_match.group(1))
+                continue # This continue is correct here: skip Hebrew date parsing for non-Hebrew dates
+
+            parsing_date_str = date_str[10:].strip()
+            # If no Gregorian year was found in parentheses, check for a 4-digit year in the Hebrew part
+            if gregorian_year is None:
+                hebrew_year_match = re.search(r'\s(\d{4})$', parsing_date_str)
+                if hebrew_year_match:
+                    # Treat Hebrew year as Gregorian for now if no explicit Gregorian year is provided
+                    gregorian_year = int(hebrew_year_match.group(1))
             
             if not parsing_date_str:
-                logging.debug("parsing_date_str is empty.")
                 continue
 
             temp_date_parts = list(parsing_date_str.split())
-            logging.debug(f"temp_date_parts: {temp_date_parts}")
             
-            if not temp_date_parts:
-                logging.debug("temp_date_parts is empty.")
-                continue
-            
-            if temp_date_parts[0].upper() in ['BET', 'ABT', 'EST', 'CAL', 'FROM', 'TO', 'INT', 'AFT', 'BEF']:
-                logging.debug(f"Skipping date due to qualifier: {temp_date_parts[0]}")
-                temp_date_parts = temp_date_parts[1:]
-                if not temp_date_parts:
-                    logging.debug("temp_date_parts empty after removing qualifier.")
-                    continue
-            
-            if 'AND' in [dp.upper() for dp in temp_date_parts]:
-                logging.debug(f"Skipping date due to 'AND' keyword: {temp_date_parts}")
-                try:
-                    and_index = [dp.upper() for dp in temp_date_parts].index('AND')
-                    temp_date_parts = temp_date_parts[:and_index]
-                    if not temp_date_parts:
-                        logging.debug("temp_date_parts empty after removing AND.")
-                        continue
-                except ValueError:
-                    pass
-
-            day = 1
+            day = 1 # Default day to 1
             month_abbr = None
+            month_found_index = -1
 
-            if len(temp_date_parts) >= 2:
-                day_str = temp_date_parts[0].replace('"', '').strip()
-                logging.debug(f"day_str: {day_str}")
-                day_candidate = HEBREW_DAY_TO_NUM.get(day_str)
-                logging.debug(f"day_candidate from HEBREW_DAY_TO_NUM: {day_candidate}")
-                if day_candidate is None:
-                    try:
-                        day_candidate = int(day_str)
-                        logging.debug(f"day_candidate parsed as int: {day_candidate}")
-                    except ValueError:
-                        logging.debug(f"Could not parse day from: {day_str}")
-                        day_candidate = 1 # Default to 1 if not found
-
-                month_abbr_candidate = temp_date_parts[1].upper()
-                if month_abbr_candidate in HEBREW_MONTHS_MAP:
-                    day = day_candidate
-                    month_abbr = month_abbr_candidate
-            elif len(temp_date_parts) == 1:
-                month_abbr_candidate = temp_date_parts[0].upper()
-                if month_abbr_candidate in HEBREW_MONTHS_MAP:
-                    month_abbr = month_abbr_candidate
+            # Try to match two-word month names first (e.g., ADAR I)
+            for i in range(len(temp_date_parts) - 1):
+                compound_month_candidate = f"{temp_date_parts[i].upper()} {temp_date_parts[i+1].upper()}"
+                if compound_month_candidate in HEBREW_MONTHS_MAP:
+                    month_abbr = compound_month_candidate
+                    month_found_index = i
+                    break
             
+            # If no two-word month found, try single-word month names
+            if month_abbr is None:
+                for i in range(len(temp_date_parts)):
+                    single_month_candidate = temp_date_parts[i].upper()
+                    if single_month_candidate in HEBREW_MONTHS_MAP:
+                        month_abbr = single_month_candidate
+                        month_found_index = i
+                        break
+            
+            # If a month was found, try to extract the day from the part before it
+            if month_abbr and month_found_index > 0:
+                day_str = temp_date_parts[month_found_index - 1].replace('"', '').strip()
+                try:
+                    day_candidate = int(day_str)
+                    day = day_candidate
+                except ValueError:
+                    pass # Day remains 1 if not parseable or not present
+
             if month_abbr and month_abbr in HEBREW_MONTHS_MAP:
-                logging.debug(f"Final month_abbr: {month_abbr}")
                 month_num = HEBREW_MONTHS_MAP[month_abbr]
                 event_tag_name = event_type or event_element.get_tag()
                 
                 hebrew_month_name = HEBREW_MONTH_NAMES_FULL.get(month_num, "")
                 hebrew_date_formatted = f"{get_hebrew_day_string(day)} {hebrew_month_name}"
 
-                logging.debug(f"Appending date: month_num={month_num}, day={day}, hebrew_date_formatted='{hebrew_date_formatted}', name='{name}', event_tag_name='{hebrew_date_formatted}'")
                 dates.append((month_num, day, hebrew_date_formatted, f"{name} - {event_tag_name}: {hebrew_date_formatted}"))
             else:
-                logging.debug(f"Month abbreviation '{month_abbr}' not found in HEBREW_MONTHS_MAP.")
+                logger.debug(f"Month abbreviation '{month_abbr}' not found in HEBREW_MONTHS_MAP or month_abbr is None.")
     return gregorian_year
 
 
@@ -217,21 +214,21 @@ def process_gedcom_file(file_path, output_csv_file):
     try:
         gedcom_parser.parse_file(file_path)
     except Exception as e:
-        logging.error(f"Error parsing GEDCOM file {file_path}: {e}")
-        return [], {}
+        logger.error(f"Error parsing GEDCOM file {file_path}: {e}")
+        return [], {{}}
 
     root_child_elements = gedcom_parser.get_root_child_elements()
 
     dates = []
-    individuals = {}
-    individual_details = {}  # Store birth and death years
+    individuals = {{}}
+    individual_details = {{}}  # Store birth and death years
 
     for element in root_child_elements:
         if element.get_tag() == "INDI":
             individual_id = element.get_pointer()
             name = get_name_from_individual(element)
             individuals[individual_id] = name
-            individual_details[name] = {"birth_year": None, "death_year": None}
+            individual_details[name] = {{"birth_year": None, "death_year": None}}
 
     for element in root_child_elements:
         if element.get_tag() == "INDI":
@@ -250,7 +247,7 @@ def process_gedcom_file(file_path, output_csv_file):
             event_type = event_description.split(":")[0].strip()
             csv_data_rows.append([original_date_str_parsed, name, event_type])
         except ValueError:
-            logging.warning(f"Could not parse output string for CSV: {output_str}")
+            logger.warning(f"Could not parse output string for CSV: {output_str}")
             csv_data_rows.append([original_date_str_parsed, "Error in processing", "Error"])
 
     with open(output_csv_file, 'w', newline='', encoding='utf-8') as csvfile:
@@ -258,7 +255,6 @@ def process_gedcom_file(file_path, output_csv_file):
         csv_writer.writerow(["Date", "Name", "Event"])
         csv_writer.writerows(csv_data_rows)
     
-    logging.info(f"Data successfully written to {output_csv_file}")
-    logging.debug(f"Dates list before returning: {dates}")
+    logger.info(f"Data successfully written to {output_csv_file}")
+    logger.debug(f"Dates list before returning: {dates}")
     return csv_data_rows, individual_details
-

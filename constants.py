@@ -3,25 +3,32 @@ import os
 # --- Constants for Hebrew Months Mapping (from GEDCOM abbreviations to month numbers) ---
 HEBREW_MONTHS_MAP = {
     "TSH": 1, "CSH": 2, "KSL": 3, "TVT": 4, "SHV": 5, "ADR": 6,
-    "ADS": 6, 
+    "ADS": 62, # Adar II
+    "ADAR I": 61, # Adar I
+    "ADAR II": 62, # Adar II
     "NSN": 7, "IYR": 8, "SVN": 9, "TMZ": 10, "AAV": 11, "ELL": 12,
+    # Adding full month names for direct lookup
+    "TISHREI": 1, "CHESHVAN": 2, "KISLEV": 3, "TEVET": 4, "SHEVAT": 5,
+    "ADAR": 6, "NISAN": 7, "IYYAR": 8, "SIVAN": 9, "TAMUZ": 10, "AV": 11, "ELUL": 12,
 }
 
 HEBCAL_FULL_MONTH_NAMES_TO_NUM = {
     "Tishrei": 1, "Cheshvan": 2, "Kislev": 3, "Tevet": 4, "Shevat": 5,
-    "Adar": 6, "Adar I": 6, "Adar II": 6,
+    "Adar": 6, "Adar I": 61, "Adar II": 62,
     "Nisan": 7, "Iyyar": 8, "Sivan": 9, "Tamuz": 10, "Av": 11, "Elul": 12,
 }
 
 HEBREW_MONTH_NAMES_FULL = {
     1: "תשרי", 2: "חשון", 3: "כסלו", 4: "טבת", 5: "שבט", 6: "אדר",
+    61: "אדר א", # Adar I
+    62: "אדר ב", # Adar II
     7: "ניסן", 8: "אייר", 9: "סיון", 10: "תמוז", 11: "אב", 12: "אלול",
 }
 
 HEBREW_DAY_TO_NUM = {
     "א": 1, "ב": 2, "ג": 3, "ד": 4, "ה": 5, "ו": 6, "ז": 7, "ח": 8, "ט": 9, "י": 10,
     "יא": 11, "יב": 12, "יג": 13, "יד": 14, "טו": 15, "טז": 16, "יז": 17, "יח": 18, "יט": 19,
-    "כ": 20, "כא": 21, "כב": 22, "כג": 23, "כד": 24, "כה": 25, "כו": 26, "כז": 27, "כח": 28, "כט": 29, "ל": 30
+    "כ": 20, "כא": 22, "כב": 22, "כג": 23, "כד": 24, "כה": 25, "כו": 26, "כז": 27, "כח": 28, "כט": 29, "ל": 30
 }
 
 HEBREW_MONTH_NAMES_TO_NUM = {v: k for k, v in HEBREW_MONTH_NAMES_FULL.items()}
