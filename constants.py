@@ -2,7 +2,7 @@ import os
 
 # --- Constants for Hebrew Months Mapping (from GEDCOM abbreviations to month numbers) ---
 HEBREW_MONTHS_MAP = {
-    "TSH": 1, "CSH": 2, "KSL": 3, "TVT": 4, "SHV": 5, "ADR": 6,
+    "TSH": 1, "CSH": 2, "KSL": 3, "TVT": 4, "SHV": 5, "ADR": 6, "ADA": 6,
     "ADS": 62, # Adar II
     "ADAR I": 61, # Adar I
     "ADAR II": 62, # Adar II

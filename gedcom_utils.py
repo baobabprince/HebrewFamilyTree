@@ -220,15 +220,15 @@ def process_gedcom_file(file_path, output_csv_file):
     root_child_elements = gedcom_parser.get_root_child_elements()
 
     dates = []
-    individuals = {{}}
-    individual_details = {{}}  # Store birth and death years
+    individuals = {}
+    individual_details = {}  # Store birth and death years
 
     for element in root_child_elements:
         if element.get_tag() == "INDI":
             individual_id = element.get_pointer()
             name = get_name_from_individual(element)
             individuals[individual_id] = name
-            individual_details[name] = {{"birth_year": None, "death_year": None}}
+            individual_details[name] = {"birth_year": None, "death_year": None}
 
     for element in root_child_elements:
         if element.get_tag() == "INDI":
