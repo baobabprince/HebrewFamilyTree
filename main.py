@@ -31,6 +31,24 @@ logging.getLogger().setLevel(logging.INFO)
 
 # ------------------------------------------------------------------ helpers
 def get_relationship(p1_id, p2_id, parser):
+    """
+    Determines the direct relationship between two individuals in the family tree.
+
+    This function checks for parent-child, child-parent, and spousal relationships
+    by examining the family (`FAM`) records associated with each individual.
+
+    Args:
+        p1_id (str): The GEDCOM pointer ID of the first person.
+        p2_id (str): The GEDCOM pointer ID of the second person.
+        parser (Parser): The initialized GEDCOM parser instance containing the
+                         parsed family tree.
+
+    Returns:
+        str: A string describing the relationship (e.g., "husband (of)",
+             "father (of)", "son (of)", "relative"). Returns
+             "unknown/non-individual" if one of the IDs is not a valid
+             individual.
+    """
     # Helper to find a specific sub-element (like FAMC) by tag
     def find_sub_element(element, tag):
         for child in element.get_child_elements():
@@ -68,7 +86,6 @@ def get_relationship(p1_id, p2_id, parser):
                     return "wife (of)"
 
     # --- Check 2: p1 is Parent of p2 (Look up p2's FAMC) ---
-    # FIX: Use find_sub_element helper instead of p2.get_sub_element
     p2_famc_element = find_sub_element(p2, 'FAMC')
     if p2_famc_element:
         famc_id = p2_famc_element.get_value()
@@ -83,7 +100,6 @@ def get_relationship(p1_id, p2_id, parser):
                 return "mother (of)"
 
     # --- Check 3: p2 is Parent of p1 (Look up p1's FAMC) ---
-    # FIX: Use find_sub_element helper instead of p1.get_sub_element
     p1_famc_element = find_sub_element(p1, 'FAMC')
     if p1_famc_element:
         famc_id = p1_famc_element.get_value()
@@ -92,7 +108,6 @@ def get_relationship(p1_id, p2_id, parser):
         if p1_child_family:
             husband_id, wife_id = get_husband_and_wife_ids(p1_child_family)
             
-            # Check if p2 is the father or mother of p1
             if (husband_id and p2.get_pointer() == husband_id) or \
                (wife_id and p2.get_pointer() == wife_id):
                 if p1.get_gender() == "M":
@@ -103,10 +118,27 @@ def get_relationship(p1_id, p2_id, parser):
     return "relative"
 def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold, person_id, parser, individual_details):
     """
-    enriched_list: list of tuples (distance, path, gregorian_date, heb_date_str, name, event_type)
-    id2name      : dict mapping GEDCOM pointer -> display name
-    person_id_from_env: The PERSONID value read from the environment in the main function.
-    individual_details: dict with birth/death years
+    Constructs the Markdown body for the GitHub issue.
+
+    This function formats a list of upcoming events into a human-readable
+    Markdown string. It includes emojis, age calculations, and the genealogical
+    path from the `PERSONID` if the distance exceeds the threshold.
+
+    Args:
+        enriched_list (list): A list of tuples, where each tuple contains event
+                              details: (distance, path, gregorian_date,
+                              heb_date_str, name, event_type).
+        id2name (dict): A dictionary mapping GEDCOM pointers to display names.
+        today_gregorian (date): The current date, for the issue header.
+        distance_threshold (int): The distance beyond which the genealogical path
+                                  should be displayed.
+        person_id (str): The GEDCOM pointer ID of the person from whom distances
+                         are calculated.
+        parser (Parser): The initialized GEDCOM parser instance.
+        individual_details (dict): A dictionary with birth/death years for age calculation.
+
+    Returns:
+        str: The formatted Markdown string for the GitHub issue body.
     """
     issue_body = (
         f"## תאריכים עבריים קרובים "
@@ -144,7 +176,6 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
         issue_body += f"* **אירוע**: `{event_name}`\n"
         issue_body += f"* **אדם/משפחה**: `{name}{age_str}`\n"
 
-        # include distance & path only if PERSONID was supplied and distance > 8
         if person_id and dist is not None and dist > distance_threshold and path:
             path_parts = []
             reversed_path = list(reversed(path))
@@ -166,6 +197,21 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
 
 # ------------------------------------------------------------------ main
 def main():
+    """
+    Main function to orchestrate the entire family tree event notification process.
+
+    This script executes the following steps:
+    1.  Downloads the GEDCOM file from Google Drive.
+    2.  Fixes and cleans the GEDCOM file format.
+    3.  Processes the GEDCOM to extract individuals, families, and Hebrew date events.
+    4.  Fetches the upcoming week's Hebrew dates from the Hebcal API.
+    5.  Identifies relevant events that fall within the upcoming week.
+    6.  Builds a family tree graph to calculate genealogical distances.
+    7.  Enriches the event data with distance and path information.
+    8.  Constructs a title and body for a GitHub issue.
+    9.  Writes the issue content to the `GITHUB_OUTPUT` file for use in a
+        GitHub Actions workflow.
+    """
     logging.info("Step 1: Downloading GEDCOM from Google Drive …")
     if not download_gedcom_from_drive(GOOGLE_DRIVE_FILE_ID, INPUT_GEDCOM_FILE):
         logging.error("Failed to download GEDCOM. Exiting.")
@@ -174,7 +220,6 @@ def main():
     logging.info("Step 2: Fixing GEDCOM format …")
     fix_gedcom_format(INPUT_GEDCOM_FILE, FIXED_GEDCOM_FILE)
 
-    # Print the content of the fixed GEDCOM file for debugging
     logging.debug(f"Content of {FIXED_GEDCOM_FILE}:")
     with open(FIXED_GEDCOM_FILE, 'r', encoding='utf-8') as f:
         logging.debug(f.read())
@@ -194,7 +239,6 @@ def main():
 
     relevant_upcoming_dates = find_relevant_hebrew_dates(processed_rows, hebrew_week_dates_map)
 
-    # ---------- build graph for distance / path ----------
     gedcom_parser = Parser()
     gedcom_parser.parse_file(FIXED_GEDCOM_FILE)
     G, id2name = build_graph(FIXED_GEDCOM_FILE)
@@ -219,7 +263,6 @@ def main():
             enriched.append((999, [], gregorian_date,
                              original_date_str_parsed, name, event_type))
 
-    # ---------- build GitHub issue ----------
     parasha = get_parasha_for_week(today_gregorian)
     issue_title = f"{parasha} - תאריכים עבריים קרובים: {today_gregorian.strftime('%Y-%m-%d')}"
     issue_body = build_issue_body(enriched, id2name, today_gregorian, distance_threshold, person_id, gedcom_parser, individual_details)

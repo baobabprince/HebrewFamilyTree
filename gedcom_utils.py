@@ -2,6 +2,7 @@ import re
 import csv
 import logging
 from gedcom.parser import Parser
+from gedcom.element.element import Element
 from constants import HEBREW_MONTHS_MAP, HEBREW_EVENT_NAMES, HEBREW_MONTH_NAMES_FULL, HEBREW_DAY_TO_NUM
 from hebcal_api import get_gregorian_date_from_hebrew_api
 
@@ -16,7 +17,16 @@ if not logger.handlers:
 
 
 def get_hebrew_day_string(day):
-    """Converts a day number to its Hebrew letter representation."""
+    """
+    Converts a numerical day of the month to its Hebrew letter equivalent.
+
+    Args:
+        day (int): The day of the month (1-30).
+
+    Returns:
+        str: The Hebrew letter representation of the day (e.g., "א", "יב", "ל").
+             Returns the original day as a string if not in the range 1-30.
+    """
     hebrew_numerals = {
         1: "א", 2: "ב", 3: "ג", 4: "ד", 5: "ה", 6: "ו", 7: "ז", 8: "ח", 9: "ט", 10: "י",
         11: "יא", 12: "יב", 13: "יג", 14: "יד", 15: "טו", 16: "טז", 17: "יז", 18: "יח", 19: "יט",
@@ -26,8 +36,18 @@ def get_hebrew_day_string(day):
 
 def fix_gedcom_format(input_file, output_file):
     """
-    Fixes the format of a GEDCOM file by normalizing spacing AND removing
-    any line that does not conform to the basic GEDCOM line structure.
+    Reads a GEDCOM file, normalizes spacing, and removes non-compliant lines.
+
+    This function cleans a GEDCOM file by:
+    1.  Ensuring consistent single-spacing between elements on each line.
+    2.  Stripping leading/trailing whitespace from each line.
+    3.  Validating each line against a regex for the standard GEDCOM format
+        (level, optional ID, tag, optional value).
+    4.  Discarding any lines that do not match this format to prevent parsing errors.
+
+    Args:
+        input_file (str): The path to the source GEDCOM file.
+        output_file (str): The path where the cleaned GEDCOM file will be saved.
     """
     try:
         with open(input_file, "r", encoding="utf-8-sig", errors="replace") as file:
@@ -38,7 +58,7 @@ def fix_gedcom_format(input_file, output_file):
 
     fixed_lines = []
     
-    # Regex for VALID GEDCOM line: Level, Optional XREF_ID, Tag, Optional Value
+    # Regex for a valid GEDCOM line: Level, Optional XREF_ID, Tag, Optional Value
     GEDCOM_LINE_REGEX = re.compile(r'^(\d+)\s+(?:(@\S+@)\s+)?(\S+)(?:\s+(.*))?$')
 
     for line in lines:
@@ -58,14 +78,12 @@ def fix_gedcom_format(input_file, output_file):
             parts.append(tag)
             # Normalize spaces within the value part as well
             if value:
-                parts.append(" ".join(value.split())) # FIX: Normalize spaces in value
+                parts.append(" ".join(value.split()))
             
             fixed_line = " ".join(parts)
             fixed_lines.append(fixed_line)
         else:
-            # *Crucial Change*: Instead of keeping the original line, drop it and log the warning.
             logger.warning(f"Dropping non-GEDCOM-compliant line: {line}")
-            # Do NOT append 'line' to 'fixed_lines'
 
     try:
         with open(output_file, "w", encoding="utf-8") as file:
@@ -77,14 +95,35 @@ def fix_gedcom_format(input_file, output_file):
 
 
 def get_name_from_individual(element):
-    """Extracts name from an individual element."""
+    """
+    Extracts the full name from a GEDCOM individual (`INDI`) element.
+
+    Args:
+        element (Element): A GEDCOM element representing an individual.
+
+    Returns:
+        str: The formatted name of the individual, or "Unknown Name" if not found.
+    """
     for child in element.get_child_elements():
         if child.get_tag() == "NAME":
             return child.get_value().replace("/", "").strip()
     return "Unknown Name"
 
 def process_individual_events(element, name, dates, individual_details):
-    """Processes birth, death, and other events for an individual."""
+    """
+    Parses events (like birth and death) for a single individual.
+
+    This function iterates through the sub-elements of an individual (`INDI`)
+    record, identifies event tags, and calls `process_event` to handle date
+    extraction. It also populates the `individual_details` dictionary with
+    birth and death years.
+
+    Args:
+        element (Element): The GEDCOM `INDI` element for the individual.
+        name (str): The name of the individual.
+        dates (list): A list to which extracted Hebrew date tuples are appended.
+        individual_details (dict): A dictionary to store birth and death years for the individual.
+    """
     individual_event_tags = [
         "BIRT", "DEAT", "CHR", "BURI", "CREM", "ADOP", "BAPM",
         "BARM", "BASM", "BLES", "CHRA", "CONF", "EMIG", "FCOM", "GRAD",
@@ -102,7 +141,18 @@ def process_individual_events(element, name, dates, individual_details):
                     individual_details[name]["death_year"] = gregorian_year
 
 def process_family_events(element, individuals, dates):
-    """Processes marriage and other events for a family."""
+    """
+    Parses events (like marriage) for a single family unit.
+
+    This function identifies the husband and wife in a family (`FAM`) record,
+    constructs a couple's name, and then calls `process_event` for each
+    family-related event tag (e.g., `MARR`).
+
+    Args:
+        element (Element): The GEDCOM `FAM` element for the family.
+        individuals (dict): A dictionary mapping individual IDs to names.
+        dates (list): A list to which extracted Hebrew date tuples are appended.
+    """
     husband_id = None
     wife_id = None
     
@@ -125,7 +175,23 @@ def process_family_events(element, individuals, dates):
             process_event(child, couple_name, dates, event_type=event_type_str)
 
 def process_event(event_element, name, dates, event_type=None):
-    """Extracts and processes date from an event element."""
+    """
+    Extracts, parses, and processes a date from a GEDCOM event element.
+
+    This function handles both standard Gregorian and special Hebrew dates
+    (prefixed with `@#DHEBREW@`). It attempts to extract a Gregorian year for
+    age calculation and parses the Hebrew date components to store for later
+    comparison.
+
+    Args:
+        event_element (Element): The GEDCOM element for a specific event (e.g., `BIRT`, `MARR`).
+        name (str): The name of the individual or couple associated with the event.
+        dates (list): The master list where extracted date tuples are stored.
+        event_type (str, optional): The type of event. Defaults to None.
+
+    Returns:
+        int or None: The Gregorian year of the event if found, otherwise None.
+    """
     gregorian_year = None
     for child in event_element.get_child_elements():
         if child.get_tag() == "DATE":
@@ -149,7 +215,7 @@ def process_event(event_element, name, dates, event_type=None):
                     simple_greg_match = re.search(r'(\d{4})', date_str)
                     if simple_greg_match:
                         gregorian_year = int(simple_greg_match.group(1))
-                continue # This continue is correct here: skip Hebrew date parsing for non-Hebrew dates
+                continue
 
             parsing_date_str = date_str[10:].strip()
             if not parsing_date_str:
@@ -190,16 +256,18 @@ def process_event(event_element, name, dates, event_type=None):
                     day_candidate = int(day_str)
                     day = day_candidate
                 except ValueError:
-                    pass # Day remains 1 if not parseable or not present
+                    pass
 
-            # Now that all Hebrew date components are parsed, if gregorian_year is still None,
-            # try to convert from Hebrew to Gregorian.
             if gregorian_year is None and hebrew_year and month_abbr and month_abbr in HEBREW_MONTHS_MAP:
                 month_num = HEBREW_MONTHS_MAP[month_abbr]
-                gregorian_year = get_gregorian_date_from_hebrew_api(hebrew_year, month_num, day)
+                converted_gregorian_year = get_gregorian_date_from_hebrew_api(hebrew_year, month_num, day)
+                if converted_gregorian_year:
+                    gregorian_year = converted_gregorian_year
+                else:
+                    gregorian_year = hebrew_year  # Fallback to Hebrew year
 
             if month_abbr and month_abbr in HEBREW_MONTHS_MAP:
-                month_num = HEBREW_MONTHS_MAP[month_abbr] # Re-assign month_num for consistency
+                month_num = HEBREW_MONTHS_MAP[month_abbr]
                 event_tag_name = event_type or event_element.get_tag()
                 
                 hebrew_month_name = HEBREW_MONTH_NAMES_FULL.get(month_num, "")
@@ -207,13 +275,30 @@ def process_event(event_element, name, dates, event_type=None):
 
                 dates.append((month_num, day, hebrew_date_formatted, f"{name} - {event_tag_name}: {hebrew_date_formatted}"))
             else:
-                logger.debug(f"Month abbreviation '{month_abbr}' not found in HEBREW_MONTHS_MAP or month_abbr is None.")
+                logger.debug(f"Month abbreviation '{month_abbr}' not found in HEBREW_MONTHS_MAP.")
     return gregorian_year
 
 
 def process_gedcom_file(file_path, output_csv_file):
     """
-    Processes a GEDCOM file, extracts information, and writes to dates.csv.
+    Orchestrates the parsing of a GEDCOM file to extract Hebrew date events.
+
+    This function performs a full scan of the GEDCOM file:
+    1.  It first iterates through all records to build a map of individual IDs to names.
+    2.  It then re-iterates to process events for both individuals and families.
+    3.  Finally, it sorts the collected dates and writes the relevant information
+        to a CSV file.
+
+    Args:
+        file_path (str): The path to the cleaned GEDCOM file.
+        output_csv_file (str): The path to write the output CSV file.
+
+    Returns:
+        tuple: A tuple containing:
+            - list: A list of lists, where each inner list represents a row in the CSV
+                    (date, name, event type).
+            - dict: A dictionary containing details for each individual, such as
+                    birth and death years.
     """
     gedcom_parser = Parser()
     try:
@@ -225,8 +310,8 @@ def process_gedcom_file(file_path, output_csv_file):
     root_child_elements = gedcom_parser.get_root_child_elements()
 
     dates = []
-    individuals = {}  # Initialize as empty dict
-    individual_details = {}  # Store birth and death years
+    individuals = {}
+    individual_details = {}
 
     for element in root_child_elements:
         if element.get_tag() == "INDI":
@@ -238,7 +323,6 @@ def process_gedcom_file(file_path, output_csv_file):
     for element in root_child_elements:
         if element.get_tag() == "INDI":
             name = individuals.get(element.get_pointer(), "Unknown Individual")
-            # --- Modified to pass individual_details ---
             process_individual_events(element, name, dates, individual_details)
         elif element.get_tag() == "FAM":
             process_family_events(element, individuals, dates)
@@ -265,5 +349,13 @@ def process_gedcom_file(file_path, output_csv_file):
     return csv_data_rows, individual_details
 
 def convert_keys_to_strings(some_dict):
-    """Convert dictionary keys to strings."""
+    """
+    Converts the keys of a dictionary to strings.
+
+    Args:
+        some_dict (dict): The dictionary to process.
+
+    Returns:
+        dict: A new dictionary with all keys converted to strings.
+    """
     return {str(k): v for k, v in some_dict.items()}

@@ -5,7 +5,24 @@ import networkx as nx
 from gedcom.parser import Parser
 
 def build_graph(file_path):
-    """Return an undirected NetworkX graph of the GEDCOM family tree."""
+    """
+    Constructs an undirected NetworkX graph from a GEDCOM file.
+
+    This function parses a GEDCOM file to identify all individuals and families.
+    It then builds a graph where:
+    - Each individual (`INDI`) is a node, identified by their unique GEDCOM pointer.
+    - An edge connects a husband and wife in a family (`FAM`).
+    - Edges connect parents (husband and wife) to each of their children.
+
+    Args:
+        file_path (str): The path to the GEDCOM file to be processed.
+
+    Returns:
+        tuple: A tuple containing:
+            - nx.Graph: The constructed graph representing the family tree.
+            - dict: A dictionary mapping individual pointers (e.g., '@I1@') to
+                    their formatted names.
+    """
     G = nx.Graph()
 
     gedcom_parser = Parser()
@@ -49,7 +66,25 @@ def build_graph(file_path):
 
 
 def distance_and_path(graph, person_id, target_id):
-    """Return (distance, path) or (None, []) if not reachable."""
+    """
+    Calculates the shortest path and distance between two nodes in the graph.
+
+    This function is a wrapper around NetworkX's shortest path algorithms.
+    It gracefully handles cases where no path exists between the nodes or if
+    one of the nodes is not found in the graph.
+
+    Args:
+        graph (nx.Graph): The NetworkX graph of the family tree.
+        person_id (str): The starting node (GEDCOM pointer) for the path calculation.
+        target_id (str): The ending node (GEDCOM pointer) for the path calculation.
+
+    Returns:
+        tuple: A tuple containing:
+            - int or None: The shortest path distance (number of edges), or None
+                           if no path exists.
+            - list: A list of node pointers representing the shortest path, or an
+                    empty list if no path exists.
+    """
     try:
         d = nx.shortest_path_length(graph, person_id, target_id)
         p = nx.shortest_path(graph, person_id, target_id)

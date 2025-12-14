@@ -14,6 +14,22 @@ from googleapiclient.http import MediaIoBaseDownload
 SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
 
 def get_drive_service():
+    """
+    Authenticates with the Google Drive API and returns a service object.
+
+    This function handles multiple authentication methods:
+    1.  It first checks for a local `token.json` file, which is created
+        after the first successful user authentication flow.
+    2.  If `token.json` is not found or the credentials have expired, it
+        attempts to use service account credentials from the
+        `GOOGLE_APPLICATION_CREDENTIALS` environment variable.
+    3.  If neither method is successful, it returns None.
+
+    Returns:
+        googleapiclient.discovery.Resource: The authenticated Google Drive
+                                            service object, or None if
+                                            authentication fails.
+    """
     creds = None
     if os.path.exists('token.json'):
         creds = Credentials.from_authorized_user_file('token.json', SCOPES)
@@ -42,6 +58,26 @@ def get_drive_service():
         return None
 
 def download_gedcom_from_drive(file_id, destination_path):
+    """
+    Downloads a GEDCOM file from Google Drive to a specified local path.
+
+    This function uses the authenticated Google Drive service to download a file
+    by its ID. If the download fails or if the service is unavailable, it
+    provides a fallback mechanism to use a local `tree.ged` file if it exists.
+
+    Args:
+        file_id (str): The ID of the file to download from Google Drive.
+        destination_path (str): The local file path where the downloaded
+                                content will be saved.
+
+    Returns:
+        bool: True if the file was successfully downloaded or the local
+              fallback was used, False otherwise.
+
+    Raises:
+        HttpError: An error from the Google Drive API, which is caught and
+                   logged within the function.
+    """
     service = get_drive_service()
     if not service:
         if os.path.exists('tree.ged'):
