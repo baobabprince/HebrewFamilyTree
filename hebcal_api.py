@@ -4,6 +4,13 @@ import requests
 import logging
 from constants import HEBCAL_API_BASE_URL, HEBCAL_FULL_MONTH_NAMES_TO_NUM, HEBREW_DAY_TO_NUM, HEBREW_MONTH_NAMES_TO_NUM
 
+# Mapping from Hebrew month number (as used internally) to English name (for Hebcal API)
+HEBREW_MONTH_NUM_TO_ENGLISH_NAME = {
+    1: "Tishrei", 2: "Cheshvan", 3: "Kislev", 4: "Tevet", 5: "Shevat",
+    6: "Adar", 61: "Adar I", 62: "Adar II",
+    7: "Nisan", 8: "Iyyar", 9: "Sivan", 10: "Tamuz", 11: "Av", 12: "Elul",
+}
+
 def get_hebrew_date_from_api(gregorian_date_obj):
     """
     Fetches the Hebrew date for a given Gregorian date using Hebcal API.
@@ -18,8 +25,16 @@ def get_hebrew_date_from_api(gregorian_date_obj):
     }
     
     try:
-        response = requests.get(HEBCAL_API_BASE_URL, params=params, timeout=10)
-        response.raise_for_status()
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        }
+        response = requests.get(HEBCAL_API_BASE_URL, params=params, timeout=10, allow_redirects=False, headers=headers)
+        
+        if response.is_redirect:
+            logging.error(f"Hebcal API converter redirected for Hebrew date {hebrew_day} {hebrew_month_name_english} {hebrew_year}. This usually means the date is invalid or not found.")
+            return None
+
+        response.raise_for_status() # This will raise an exception for 4xx or 5xx errors
         
         data = response.json()
         
@@ -144,5 +159,48 @@ def get_parasha_for_week(start_date):
         return ""
 
     except (requests.exceptions.RequestException, json.JSONDecodeError) as e:
-        logging.error(f"Error fetching Parasha from Hebcal API: {e}")
-        return ""
+            logging.error(f"Error fetching Parasha from Hebcal API: {e}")
+            return ""
+        
+def get_gregorian_date_from_hebrew_api(hebrew_year, hebrew_month_num, hebrew_day):
+    """
+    Converts a Hebrew date (year, month number, day) to its corresponding Gregorian year
+    using the Hebcal API's /converter endpoint.
+    Returns the Gregorian year or None on failure.
+    """
+    hebrew_month_name_english = HEBREW_MONTH_NUM_TO_ENGLISH_NAME.get(hebrew_month_num)
+    if not hebrew_month_name_english:
+        logging.error(f"Invalid Hebrew month number: {hebrew_month_num}")
+        return None
+
+    params = {
+        "cfg": "json",
+        "hy": hebrew_year,
+        "hm": hebrew_month_name_english,
+        "hd": hebrew_day,
+    }
+    logging.debug(f"Sending parameters to Hebcal API converter: {params}")
+
+    try:
+        response = requests.get(HEBCAL_API_BASE_URL, params=params, timeout=10)
+        data = response.json()
+
+        # Verify that the Hebrew date in the response matches the requested Hebrew date
+        # If the API redirects to a default (like current date), the hebrew year/month will not match
+        if "hy" not in data or "hm" not in data or data["hy"] != hebrew_year or data["hm"] != hebrew_month_name_english:
+            logging.error(f"Hebcal API response Hebrew date ({data.get('hd')} {data.get('hm')} {data.get('hy')}) does not match requested date ({hebrew_day} {hebrew_month_name_english} {hebrew_year}). Assuming invalid conversion and returning None.")
+            return None
+        logging.debug(f"API converter response for H: {hebrew_day} {hebrew_month_name_english} {hebrew_year}:\n{json.dumps(data, indent=2)}")
+
+        if "gy" in data:
+            return int(data["gy"])
+        else:
+            logging.error(f"API converter response missing 'gy' key for Hebrew date {hebrew_day} {hebrew_month_name_english} {hebrew_year}: {data}")
+            return None
+
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error fetching Gregorian date from Hebcal API for {hebrew_day} {hebrew_month_name_english} {hebrew_year}: {e}")
+        return None
+    except json.JSONDecodeError:
+        logging.error(f"Error decoding JSON from Hebcal API for Hebrew date. Response: {response.text[:200]}...")
+        return None

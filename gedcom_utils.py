@@ -3,6 +3,7 @@ import csv
 import logging
 from gedcom.parser import Parser
 from constants import HEBREW_MONTHS_MAP, HEBREW_EVENT_NAMES, HEBREW_MONTH_NAMES_FULL, HEBREW_DAY_TO_NUM
+from hebcal_api import get_gregorian_date_from_hebrew_api
 
 # Configure logging for gedcom_utils
 logger = logging.getLogger(__name__)
@@ -151,13 +152,6 @@ def process_event(event_element, name, dates, event_type=None):
                 continue # This continue is correct here: skip Hebrew date parsing for non-Hebrew dates
 
             parsing_date_str = date_str[10:].strip()
-            # If no Gregorian year was found in parentheses, check for a 4-digit year in the Hebrew part
-            if gregorian_year is None:
-                hebrew_year_match = re.search(r'\s(\d{4})$', parsing_date_str)
-                if hebrew_year_match:
-                    # Treat Hebrew year as Gregorian for now if no explicit Gregorian year is provided
-                    gregorian_year = int(hebrew_year_match.group(1))
-            
             if not parsing_date_str:
                 continue
 
@@ -166,6 +160,11 @@ def process_event(event_element, name, dates, event_type=None):
             day = 1 # Default day to 1
             month_abbr = None
             month_found_index = -1
+            hebrew_year = None
+
+            hebrew_year_match = re.search(r'\s(\d{4})$', parsing_date_str)
+            if hebrew_year_match:
+                hebrew_year = int(hebrew_year_match.group(1))
 
             # Try to match two-word month names first (e.g., ADAR I)
             for i in range(len(temp_date_parts) - 1):
@@ -193,8 +192,14 @@ def process_event(event_element, name, dates, event_type=None):
                 except ValueError:
                     pass # Day remains 1 if not parseable or not present
 
-            if month_abbr and month_abbr in HEBREW_MONTHS_MAP:
+            # Now that all Hebrew date components are parsed, if gregorian_year is still None,
+            # try to convert from Hebrew to Gregorian.
+            if gregorian_year is None and hebrew_year and month_abbr and month_abbr in HEBREW_MONTHS_MAP:
                 month_num = HEBREW_MONTHS_MAP[month_abbr]
+                gregorian_year = get_gregorian_date_from_hebrew_api(hebrew_year, month_num, day)
+
+            if month_abbr and month_abbr in HEBREW_MONTHS_MAP:
+                month_num = HEBREW_MONTHS_MAP[month_abbr] # Re-assign month_num for consistency
                 event_tag_name = event_type or event_element.get_tag()
                 
                 hebrew_month_name = HEBREW_MONTH_NAMES_FULL.get(month_num, "")
@@ -215,20 +220,20 @@ def process_gedcom_file(file_path, output_csv_file):
         gedcom_parser.parse_file(file_path)
     except Exception as e:
         logger.error(f"Error parsing GEDCOM file {file_path}: {e}")
-        return [], {{}}
+        return [], {}
 
     root_child_elements = gedcom_parser.get_root_child_elements()
 
     dates = []
-    individuals = {{}}
-    individual_details = {{}}  # Store birth and death years
+    individuals = {}  # Initialize as empty dict
+    individual_details = {}  # Store birth and death years
 
     for element in root_child_elements:
         if element.get_tag() == "INDI":
             individual_id = element.get_pointer()
             name = get_name_from_individual(element)
             individuals[individual_id] = name
-            individual_details[name] = {{"birth_year": None, "death_year": None}}
+            individual_details[name] = {"birth_year": None, "death_year": None}
 
     for element in root_child_elements:
         if element.get_tag() == "INDI":
@@ -258,3 +263,7 @@ def process_gedcom_file(file_path, output_csv_file):
     logger.info(f"Data successfully written to {output_csv_file}")
     logger.debug(f"Dates list before returning: {dates}")
     return csv_data_rows, individual_details
+
+def convert_keys_to_strings(some_dict):
+    """Convert dictionary keys to strings."""
+    return {str(k): v for k, v in some_dict.items()}
