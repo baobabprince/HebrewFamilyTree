@@ -237,7 +237,7 @@ def main():
     today_gregorian = date.today()
     hebrew_week_dates_map = get_hebrew_date_range_api(today_gregorian, 7)
 
-    relevant_upcoming_dates = find_relevant_hebrew_dates(processed_rows, hebrew_week_dates_map)
+    relevant_upcoming_dates = find_relevant_hebrew_dates(processed_rows, hebrew_week_dates_map, has_id_column=True)
 
     gedcom_parser = Parser()
     gedcom_parser.parse_file(FIXED_GEDCOM_FILE)
@@ -249,19 +249,33 @@ def main():
         distance_threshold = DISTANCE_THRESHOLD
 
     enriched = []
-    for gregorian_date, original_date_str_parsed, name, event_type in relevant_upcoming_dates:
-        node = None
-        for k, v in id2name.items():
-            if v == name:
-                node = k
-                break
-        if PERSONID and node:
-            dist, path = distance_and_path(G, PERSONID, node)
-            enriched.append((dist if dist is not None else 999, path,
-                             gregorian_date, original_date_str_parsed, name, event_type))
-        else:
-            enriched.append((999, [], gregorian_date,
-                             original_date_str_parsed, name, event_type))
+    for item in relevant_upcoming_dates:
+        gregorian_date, original_date_str_parsed, name, event_type, gedcom_id = item
+
+        dist = 999
+        path = []
+
+        if PERSONID and gedcom_id:
+            # Handle marriage events with two IDs
+            if "," in gedcom_id:
+                husband_id, wife_id = gedcom_id.split(',')
+
+                dist1, path1 = distance_and_path(G, PERSONID, husband_id)
+                dist2, path2 = distance_and_path(G, PERSONID, wife_id)
+
+                # Choose the shorter path
+                if dist1 is not None and (dist2 is None or dist1 <= dist2):
+                    dist, path = dist1, path1
+                elif dist2 is not None:
+                    dist, path = dist2, path2
+
+            # Handle individual events
+            else:
+                dist_single, path_single = distance_and_path(G, PERSONID, gedcom_id)
+                if dist_single is not None:
+                    dist, path = dist_single, path_single
+
+        enriched.append((dist, path, gregorian_date, original_date_str_parsed, name, event_type))
 
     parasha = get_parasha_for_week(today_gregorian)
     issue_title = f"{parasha} - תאריכים עבריים קרובים: {today_gregorian.strftime('%Y-%m-%d')}"
