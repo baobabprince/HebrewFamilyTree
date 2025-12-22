@@ -189,7 +189,7 @@ class TestGedcomUtils(unittest.TestCase):
     def test_process_event_hebrew_date_basic(self, mock_logger):
         mock_date_child = MagicMock()
         mock_date_child.get_tag.return_value = "DATE"
-        mock_date_child.get_value.return_value = "@#DHEBREW@ 15 KISLEV 5785"
+        mock_date_child.get_value.return_value = "HEBREW_DATE 15 KISLEV 5785"
 
         mock_event_element = MagicMock()
         mock_event_element.get_child_elements.return_value = [mock_date_child]
@@ -213,7 +213,7 @@ class TestGedcomUtils(unittest.TestCase):
     def test_process_event_hebrew_date_with_gregorian_year(self, mock_logger):
         mock_date_child = MagicMock()
         mock_date_child.get_tag.return_value = "DATE"
-        mock_date_child.get_value.return_value = "@#DHEBREW@ 10 TEVET 5785 (12 DEC 2024)"
+        mock_date_child.get_value.return_value = "HEBREW_DATE 10 TEVET 5785 (12 DEC 2024)"
 
         mock_event_element = MagicMock()
         mock_event_element.get_child_elements.return_value = [mock_date_child]
@@ -236,7 +236,7 @@ class TestGedcomUtils(unittest.TestCase):
     def test_process_event_hebrew_date_no_day(self, mock_logger):
         mock_date_child = MagicMock()
         mock_date_child.get_tag.return_value = "DATE"
-        mock_date_child.get_value.return_value = "@#DHEBREW@ ADAR I 5785"
+        mock_date_child.get_value.return_value = "HEBREW_DATE ADAR I 5785"
 
         mock_event_element = MagicMock()
         mock_event_element.get_child_elements.return_value = [mock_date_child]
@@ -316,7 +316,7 @@ class TestGedcomUtils(unittest.TestCase):
     def test_process_event_hebrew_date_with_qualifier(self, mock_logger):
         mock_date_child = MagicMock()
         mock_date_child.get_tag.return_value = "DATE"
-        mock_date_child.get_value.return_value = "@#DHEBREW@ ABT 10 SIVAN 5780"
+        mock_date_child.get_value.return_value = "HEBREW_DATE ABT 10 SIVAN 5780"
 
         mock_event_element = MagicMock()
         mock_event_element.get_child_elements.return_value = [mock_date_child]
@@ -339,7 +339,7 @@ class TestGedcomUtils(unittest.TestCase):
     def test_process_event_hebrew_date_with_and_qualifier(self, mock_logger):
         mock_date_child = MagicMock()
         mock_date_child.get_tag.return_value = "DATE"
-        mock_date_child.get_value.return_value = "@#DHEBREW@ 10 SIVAN AND 11 TAMMUZ 5780"
+        mock_date_child.get_value.return_value = "HEBREW_DATE 10 SIVAN AND 11 TAMMUZ 5780"
 
         mock_event_element = MagicMock()
         mock_event_element.get_child_elements.return_value = [mock_date_child]
@@ -357,6 +357,49 @@ class TestGedcomUtils(unittest.TestCase):
         self.assertEqual(dates[0][1], 10)
         self.assertEqual(dates[0][2], "י סיון")
         self.assertEqual(dates[0][3], "Test Person - Birth: י סיון")
+
+    def test_process_gedcom_file_with_duplicate_names(self):
+        """
+        Tests that process_gedcom_file correctly handles individuals with the same name
+        by assigning the correct unique ID to each.
+        """
+        gedcom_file_path = "test_duplicate_names.ged"
+        fixed_gedcom_file_path = self.fixed_ged_path
+        output_csv_file = self.output_csv_path
+
+        # First, run fix_gedcom_format, as is done in main.py
+        fix_gedcom_format(gedcom_file_path, fixed_gedcom_file_path)
+
+        # Now, process the fixed file
+        csv_data_rows, _ = process_gedcom_file(fixed_gedcom_file_path, output_csv_file)
+
+        # Find the rows for "Duplicate Name"
+        duplicate_name_rows = [row for row in csv_data_rows if row[1] == "Duplicate Name"]
+
+        self.assertEqual(len(duplicate_name_rows), 2, "Should find two events for 'Duplicate Name'")
+
+        # Extract IDs for easier assertion
+        ids_found = sorted([row[3] for row in duplicate_name_rows])
+
+        expected_ids = sorted(["@I3@", "@I5@"])
+
+        self.assertEqual(ids_found, expected_ids, "Should have the correct unique IDs for the duplicate names")
+
+        # Check the full row data for the person with ID @I3@
+        person_i3_row = next((row for row in csv_data_rows if row[3] == "@I3@"), None)
+        self.assertIsNotNone(person_i3_row, "Row for ID @I3@ should exist")
+        self.assertEqual(person_i3_row[0], "א כסלו")
+        self.assertEqual(person_i3_row[1], "Duplicate Name")
+        self.assertEqual(person_i3_row[2], HEBREW_EVENT_NAMES["BIRT"])
+        self.assertEqual(person_i3_row[3], "@I3@")
+
+        # Check the full row data for the person with ID @I5@
+        person_i5_row = next((row for row in csv_data_rows if row[3] == "@I5@"), None)
+        self.assertIsNotNone(person_i5_row, "Row for ID @I5@ should exist")
+        self.assertEqual(person_i5_row[0], "י כסלו")
+        self.assertEqual(person_i5_row[1], "Duplicate Name")
+        self.assertEqual(person_i5_row[2], HEBREW_EVENT_NAMES["BIRT"])
+        self.assertEqual(person_i5_row[3], "@I5@")
 
 
 if __name__ == '__main__':
