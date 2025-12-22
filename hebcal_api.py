@@ -82,14 +82,27 @@ def get_hebrew_date_range_api(start_gregorian_date, num_days):
 
 
 
-def find_relevant_hebrew_dates(processed_gedcom_rows, target_hebrew_dates_map):
+def find_relevant_hebrew_dates(processed_gedcom_rows, target_hebrew_dates_map, has_id_column=False):
     """
     Filters GEDCOM processed dates to find those matching the target Hebrew date range.
-    Returns a list of tuples: (gregorian_date, original_date_str, name, event_type)
+    Returns a list of tuples based on `has_id_column`.
     """
     relevant_dates = []
     logging.debug(f"Target Hebrew dates map (keys): {target_hebrew_dates_map.keys()}")
-    for original_date_str_parsed, name, event_type in processed_gedcom_rows:
+
+    for row in processed_gedcom_rows:
+        if has_id_column:
+            if len(row) != 4:
+                logging.warning(f"Skipping row with unexpected number of elements: {row}")
+                continue
+            original_date_str_parsed, name, event_type, gedcom_id = row
+        else:
+            if len(row) != 3:
+                logging.warning(f"Skipping row with unexpected number of elements: {row}")
+                continue
+            original_date_str_parsed, name, event_type = row
+            gedcom_id = None
+
         logging.debug(f"Processing GEDCOM date: {original_date_str_parsed}")
         parts = original_date_str_parsed.split()
         if len(parts) < 2:
@@ -97,13 +110,13 @@ def find_relevant_hebrew_dates(processed_gedcom_rows, target_hebrew_dates_map):
             continue
 
         day_str = parts[0]
-        month_str = parts[1]
+        month_str = " ".join(parts[1:])
 
         day = HEBREW_DAY_TO_NUM.get(day_str)
         if day is None:
             try:
                 day = int(day_str)
-            except ValueError:
+            except (ValueError, TypeError):
                 logging.debug(f"Could not parse day from: {day_str}")
                 continue
 
@@ -114,12 +127,18 @@ def find_relevant_hebrew_dates(processed_gedcom_rows, target_hebrew_dates_map):
 
         hebrew_date_tuple = (month_num, day)
         logging.debug(f"Extracted Hebrew date tuple from GEDCOM: {hebrew_date_tuple}")
+
         if hebrew_date_tuple in target_hebrew_dates_map:
             gregorian_date = target_hebrew_dates_map[hebrew_date_tuple]
             logging.info(f"Found relevant date: {original_date_str_parsed} ({name} - {event_type}) matches {gregorian_date}")
-            relevant_dates.append((gregorian_date, original_date_str_parsed, name, event_type))
+
+            if has_id_column:
+                relevant_dates.append((gregorian_date, original_date_str_parsed, name, event_type, gedcom_id))
+            else:
+                relevant_dates.append((gregorian_date, original_date_str_parsed, name, event_type))
         else:
-            logging.debug(f"Hebrew date {hebrew_date_tuple} not found in target map. Target map keys: {target_hebrew_dates_map.keys()}")
+            logging.debug(f"Hebrew date {hebrew_date_tuple} not found in target map.")
+
     return relevant_dates
 
 def get_parasha_for_week(start_date):

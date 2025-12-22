@@ -124,6 +124,7 @@ def process_individual_events(element, name, dates, individual_details):
         dates (list): A list to which extracted Hebrew date tuples are appended.
         individual_details (dict): A dictionary to store birth and death years for the individual.
     """
+    individual_id = element.get_pointer()
     individual_event_tags = [
         "BIRT", "DEAT", "CHR", "BURI", "CREM", "ADOP", "BAPM",
         "BARM", "BASM", "BLES", "CHRA", "CONF", "EMIG", "FCOM", "GRAD",
@@ -132,7 +133,7 @@ def process_individual_events(element, name, dates, individual_details):
     for child in element.get_child_elements():
         if child.get_tag() in individual_event_tags:
             event_type_str = HEBREW_EVENT_NAMES.get(child.get_tag(), child.get_tag())
-            gregorian_year = process_event(child, name, dates, event_type=event_type_str)
+            gregorian_year = process_event(child, name, dates, event_type=event_type_str, individual_id=individual_id)
 
             if gregorian_year:
                 if child.get_tag() == "BIRT":
@@ -172,9 +173,9 @@ def process_family_events(element, individuals, dates):
             event_type_str = child.get_tag()
             if child.get_tag() == "MARR":
                 event_type_str = HEBREW_EVENT_NAMES.get(child.get_tag(), child.get_tag())
-            process_event(child, couple_name, dates, event_type=event_type_str)
+            process_event(child, couple_name, dates, event_type=event_type_str, husband_id=husband_id, wife_id=wife_id)
 
-def process_event(event_element, name, dates, event_type=None):
+def process_event(event_element, name, dates, event_type=None, individual_id=None, husband_id=None, wife_id=None):
     """
     Extracts, parses, and processes a date from a GEDCOM event element.
 
@@ -273,7 +274,7 @@ def process_event(event_element, name, dates, event_type=None):
                 hebrew_month_name = HEBREW_MONTH_NAMES_FULL.get(month_num, "")
                 hebrew_date_formatted = f"{get_hebrew_day_string(day)} {hebrew_month_name}"
 
-                dates.append((month_num, day, hebrew_date_formatted, f"{name} - {event_tag_name}: {hebrew_date_formatted}"))
+                dates.append((month_num, day, hebrew_date_formatted, f"{name} - {event_tag_name}: {hebrew_date_formatted}", individual_id, husband_id, wife_id))
             else:
                 logger.debug(f"Month abbreviation '{month_abbr}' not found in HEBREW_MONTHS_MAP.")
     return gregorian_year
@@ -330,18 +331,26 @@ def process_gedcom_file(file_path, output_csv_file):
     dates.sort(key=lambda x: (x[0], x[1]))
 
     csv_data_rows = []
-    for _, _, original_date_str_parsed, output_str in dates:
+    for _, _, original_date_str_parsed, output_str, individual_id, husband_id, wife_id in dates:
         try:
             name, event_description = output_str.split(" - ", 1)
             event_type = event_description.split(":")[0].strip()
-            csv_data_rows.append([original_date_str_parsed, name, event_type])
+
+            # Determine the ID to be written to the CSV
+            id_to_write = individual_id if individual_id else (husband_id if husband_id else (wife_id if wife_id else ""))
+
+            # For marriage events, you might want to store both IDs
+            if event_type == HEBREW_EVENT_NAMES.get("MARR") and husband_id and wife_id:
+                id_to_write = f"{husband_id},{wife_id}"
+
+            csv_data_rows.append([original_date_str_parsed, name, event_type, id_to_write])
         except ValueError:
             logger.warning(f"Could not parse output string for CSV: {output_str}")
-            csv_data_rows.append([original_date_str_parsed, "Error in processing", "Error"])
+            csv_data_rows.append([original_date_str_parsed, "Error in processing", "Error", ""])
 
     with open(output_csv_file, 'w', newline='', encoding='utf-8') as csvfile:
         csv_writer = csv.writer(csvfile)
-        csv_writer.writerow(["Date", "Name", "Event"])
+        csv_writer.writerow(["Date", "Name", "Event", "ID"])
         csv_writer.writerows(csv_data_rows)
     
     logger.info(f"Data successfully written to {output_csv_file}")
