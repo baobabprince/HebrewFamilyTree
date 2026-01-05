@@ -81,9 +81,9 @@ def get_relationship(p1_id, p2_id, parser):
             if (p1.get_pointer() == husband_id and p2.get_pointer() == wife_id) or \
                (p1.get_pointer() == wife_id and p2.get_pointer() == husband_id):
                 if p1.get_gender() == "M":
-                    return "husband (of)"
+                    return "בעלה של"
                 else:
-                    return "wife (of)"
+                    return "אשתו של"
 
     # --- Check 2: p1 is Parent of p2 (Look up p2's FAMC) ---
     p2_famc_element = find_sub_element(p2, 'FAMC')
@@ -95,9 +95,9 @@ def get_relationship(p1_id, p2_id, parser):
             husband_id, wife_id = get_husband_and_wife_ids(p2_child_family)
             
             if husband_id and p1.get_pointer() == husband_id:
-                return "father (of)"
+                return "אבא של"
             if wife_id and p1.get_pointer() == wife_id:
-                return "mother (of)"
+                return "אמא של"
 
     # --- Check 3: p2 is Parent of p1 (Look up p1's FAMC) ---
     p1_famc_element = find_sub_element(p1, 'FAMC')
@@ -111,9 +111,9 @@ def get_relationship(p1_id, p2_id, parser):
             if (husband_id and p2.get_pointer() == husband_id) or \
                (wife_id and p2.get_pointer() == wife_id):
                 if p1.get_gender() == "M":
-                    return "son (of)"
+                    return "בן של"
                 else:
-                    return "daughter (of)"
+                    return "בת של"
 
     return "relative"
 def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold, person_id, parser, individual_details):
