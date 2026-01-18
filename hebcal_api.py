@@ -31,7 +31,7 @@ def get_hebrew_date_from_api(gregorian_date_obj):
         response = requests.get(HEBCAL_API_BASE_URL, params=params, timeout=10, allow_redirects=False, headers=headers)
         
         if response.is_redirect:
-            logging.error(f"Hebcal API converter redirected for Hebrew date {hebrew_day} {hebrew_month_name_english} {hebrew_year}. This usually means the date is invalid or not found.")
+            logging.error(f"Hebcal API converter redirected for Gregorian date {gregorian_date_obj}. This usually means the date is invalid or not found.")
             return None
 
         response.raise_for_status() # This will raise an exception for 4xx or 5xx errors
