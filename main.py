@@ -278,7 +278,7 @@ def main():
         enriched.append((dist, path, gregorian_date, original_date_str_parsed, name, event_type))
 
     parasha = get_parasha_for_week(today_gregorian)
-    issue_title = f"פרשת השבוע: {parasha}"
+    issue_title = f"פרשת השבוע: {parasha}" if parasha else f"תאריכים עבריים קרובים: {today_gregorian.strftime('%Y-%m-%d')}"
     issue_body = build_issue_body(enriched, id2name, today_gregorian, distance_threshold, person_id, gedcom_parser, individual_details)
 
     github_output_path = os.getenv("GITHUB_OUTPUT")
