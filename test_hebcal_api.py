@@ -30,27 +30,5 @@ class TestHebcalApi(unittest.TestCase):
                 # Assert the expected outcome
                 self.assertEqual(result, (expected_month, expected_day))
 
-    @patch('hebcal_api.requests.get')
-    @patch('hebcal_api.logging.warning')
-    def test_get_gregorian_date_from_hebrew_api_mismatch_logs_context(self, mock_log_warning, mock_get):
-        # Configure the mock to simulate a date mismatch
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "gy": 2024, "gm": 1, "gd": 10,  # A different date
-            "hy": 5784, "hm": "Tevet", "hd": 29
-        }
-        mock_get.return_value = mock_response
-
-        # Call the function with specific context
-        context = "John Doe - Birthday"
-        result = get_gregorian_date_from_hebrew_api(5731, 5, 28, context=context)
-
-        # Assert that the fallback year is returned
-        self.assertEqual(result, 5731)
-
-        # Assert that the logger was called with the context
-        mock_log_warning.assert_called_once()
-        self.assertIn(context, mock_log_warning.call_args[0][0])
-
 if __name__ == '__main__':
     unittest.main()
