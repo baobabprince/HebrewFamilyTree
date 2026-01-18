@@ -180,8 +180,9 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
             if name in individual_details and individual_details[name].get("birth_year") and individual_details[name].get("death_year"):
                 birth_year = individual_details[name]["birth_year"]
                 death_year = individual_details[name]["death_year"]
-                age = death_year - birth_year
-                age_str = f" (נפטר בגיל {age})"
+                age_at_death = death_year - birth_year
+                years_since_death = gregorian_date.year - death_year
+                age_str = f" (נפטר בגיל {age_at_death}, {years_since_death} שנים לפטירתו)"
         elif event_type == HEBREW_EVENT_NAMES["MARR"]:
             emoji = "💑"
 
