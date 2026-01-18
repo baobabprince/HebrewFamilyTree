@@ -143,43 +143,40 @@ def find_relevant_hebrew_dates(processed_gedcom_rows, target_hebrew_dates_map, h
 
 def get_parasha_for_week(start_date):
     """
-    Finds the Parashat Hashavua for the upcoming week.
+    Finds the Parashat Hashavua for the upcoming week using the /hebcal endpoint.
     """
-    days_ahead = 5 - start_date.weekday()  # 5 is Saturday
-    if days_ahead <= 0:
-        days_ahead += 7
-    saturday_date = start_date + timedelta(days=days_ahead)
+    end_date = start_date + timedelta(days=7)
+    logging.debug(f"Searching for Parasha between {start_date} and {end_date}")
 
-    logging.debug(f"Calculated upcoming Saturday as: {saturday_date}")
-
+    url = "https://www.hebcal.com/hebcal"
     params = {
-        "cfg": "json",
         "v": "1",
-        "gy": saturday_date.year,
-        "gm": saturday_date.month,
-        "gd": saturday_date.day,
-        "g2h": "1",
-        "hl": "he"  # Request Hebrew output
+        "cfg": "json",
+        "start": start_date.strftime('%Y-%m-%d'),
+        "end": end_date.strftime('%Y-%m-%d'),
+        "lg": "h",      # language=Hebrew
+        "s": "on",      # include weekly parasha
+        "leyning": "off"
     }
 
     try:
-        response = requests.get(HEBCAL_API_BASE_URL, params=params, timeout=10)
+        response = requests.get(url, params=params, timeout=10)
         response.raise_for_status()
         data = response.json()
         logging.debug(f"Hebcal API response for Parasha: {json.dumps(data, indent=2, ensure_ascii=False)}")
 
-        if "items" in data:
-            for item in data["items"]:
-                if item.get("category") == "parashat":
-                    logging.debug(f"Found Parasha: {item.get('hebrew')}")
-                    return item.get("hebrew", "")
+        for item in data.get("items", []):
+            if item.get("category") == "parashat":
+                hebrew_name = item.get("hebrew", "")
+                logging.info(f"Found Parasha: {hebrew_name}")
+                return hebrew_name
         
-        logging.debug("No Parasha found in Hebcal API response items.")
+        logging.warning("No Parasha found in Hebcal API response for the upcoming week.")
         return ""
 
     except (requests.exceptions.RequestException, json.JSONDecodeError) as e:
-            logging.error(f"Error fetching Parasha from Hebcal API: {e}")
-            return ""
+        logging.error(f"Error fetching Parasha from Hebcal API: {e}")
+        return ""
         
 def get_gregorian_date_from_hebrew_api(hebrew_year, hebrew_month_num, hebrew_day, context=""):
     """
