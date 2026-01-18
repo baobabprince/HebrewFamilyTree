@@ -157,18 +157,32 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
         emoji = ""
         age_str = ""
         if event_type == HEBREW_EVENT_NAMES["BIRT"]:
-            emoji = "🎂"
-            if name in individual_details and individual_details[name].get("birth_year"):
-                birth_year = individual_details[name]["birth_year"]
+            birth_year = individual_details.get(name, {}).get("birth_year")
+            death_year = individual_details.get(name, {}).get("death_year")
+
+            if death_year and birth_year:
+                # Deceased person's birthday
+                emoji = "🕯️"
+                age_at_death = death_year - birth_year
+                years_since_birth = gregorian_date.year - birth_year
+                age_str = f" (נפטר בגיל {age_at_death}, {years_since_birth} שנים מאז לידתו)"
+            elif birth_year:
+                # Living person's birthday
+                emoji = "🎂"
                 age = gregorian_date.year - birth_year
                 age_str = f" (גיל {age})"
+            else:
+                # Birthday event, but no birth year data
+                emoji = "🎂"
+
         elif event_type == HEBREW_EVENT_NAMES["DEAT"]:
             emoji = "🪦"
             if name in individual_details and individual_details[name].get("birth_year") and individual_details[name].get("death_year"):
                 birth_year = individual_details[name]["birth_year"]
                 death_year = individual_details[name]["death_year"]
-                age = death_year - birth_year
-                age_str = f" (נפטר בגיל {age})"
+                age_at_death = death_year - birth_year
+                years_since_death = gregorian_date.year - death_year
+                age_str = f" (נפטר בגיל {age_at_death}, {years_since_death} שנים לפטירתו)"
         elif event_type == HEBREW_EVENT_NAMES["MARR"]:
             emoji = "💑"
 
