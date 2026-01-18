@@ -31,7 +31,7 @@ def get_hebrew_date_from_api(gregorian_date_obj):
         response = requests.get(HEBCAL_API_BASE_URL, params=params, timeout=10, allow_redirects=False, headers=headers)
         
         if response.is_redirect:
-            logging.error(f"Hebcal API converter redirected for Hebrew date {hebrew_day} {hebrew_month_name_english} {hebrew_year}. This usually means the date is invalid or not found.")
+            logging.error(f"Hebcal API converter redirected for Gregorian date {gregorian_date_obj}. This usually means the date is invalid or not found.")
             return None
 
         response.raise_for_status() # This will raise an exception for 4xx or 5xx errors
@@ -181,11 +181,19 @@ def get_parasha_for_week(start_date):
             logging.error(f"Error fetching Parasha from Hebcal API: {e}")
             return ""
         
-def get_gregorian_date_from_hebrew_api(hebrew_year, hebrew_month_num, hebrew_day):
+def get_gregorian_date_from_hebrew_api(hebrew_year, hebrew_month_num, hebrew_day, context=""):
     """
-    Converts a Hebrew date (year, month number, day) to its corresponding Gregorian year
-    using the Hebcal API's /converter endpoint.
-    Returns the Gregorian year or None on failure.
+    Converts a Hebrew date to a Gregorian year using the Hebcal API.
+
+    Args:
+        hebrew_year (int): The Hebrew year.
+        hebrew_month_num (int): The Hebrew month number.
+        hebrew_day (int): The Hebrew day.
+        context (str, optional): Additional context for logging, such as the
+                                 name and event. Defaults to "".
+
+    Returns:
+        int or None: The Gregorian year, or None on failure.
     """
     hebrew_month_name_english = HEBREW_MONTH_NUM_TO_ENGLISH_NAME.get(hebrew_month_num)
     if not hebrew_month_name_english:
@@ -207,8 +215,8 @@ def get_gregorian_date_from_hebrew_api(hebrew_year, hebrew_month_num, hebrew_day
         # Verify that the Hebrew date in the response matches the requested Hebrew date
         # If the API redirects to a default (like current date), the hebrew year/month will not match
         if "hy" not in data or "hm" not in data or data["hy"] != hebrew_year or data["hm"] != hebrew_month_name_english:
-            logging.error(f"Hebcal API response Hebrew date ({data.get('hd')} {data.get('hm')} {data.get('hy')}) does not match requested date ({hebrew_day} {hebrew_month_name_english} {hebrew_year}). Assuming invalid conversion and returning None.")
-            return None
+            logging.warning(f"Hebcal API response date mismatch for {context}. Requested: {hebrew_day} {hebrew_month_name_english} {hebrew_year}, Got: {data.get('hd')} {data.get('hm')} {data.get('hy')}. Falling back to Hebrew year.")
+            return hebrew_year
         logging.debug(f"API converter response for H: {hebrew_day} {hebrew_month_name_english} {hebrew_year}:\n{json.dumps(data, indent=2)}")
 
         if "gy" in data:
