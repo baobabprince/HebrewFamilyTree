@@ -261,11 +261,8 @@ def process_event(event_element, name, dates, event_type=None, individual_id=Non
 
             if gregorian_year is None and hebrew_year and month_abbr and month_abbr in HEBREW_MONTHS_MAP:
                 month_num = HEBREW_MONTHS_MAP[month_abbr]
-                converted_gregorian_year = get_gregorian_date_from_hebrew_api(hebrew_year, month_num, day)
-                if converted_gregorian_year:
-                    gregorian_year = converted_gregorian_year
-                else:
-                    gregorian_year = hebrew_year  # Fallback to Hebrew year
+                context_for_log = f"{name} - {event_type}" if event_type else name
+                gregorian_year = get_gregorian_date_from_hebrew_api(hebrew_year, month_num, day, context=context_for_log)
 
             if month_abbr and month_abbr in HEBREW_MONTHS_MAP:
                 month_num = HEBREW_MONTHS_MAP[month_abbr]

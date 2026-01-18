@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
 from datetime import date
-from hebcal_api import get_hebrew_date_from_api
+from hebcal_api import get_hebrew_date_from_api, get_gregorian_date_from_hebrew_api
 
 class TestHebcalApi(unittest.TestCase):
     @patch('hebcal_api.requests.get')
