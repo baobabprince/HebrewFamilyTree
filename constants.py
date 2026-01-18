@@ -14,6 +14,7 @@ HEBREW_MONTHS_MAP = {
 
 HEBCAL_FULL_MONTH_NAMES_TO_NUM = {
     "Tishrei": 1, "Cheshvan": 2, "Kislev": 3, "Tevet": 4, "Shevat": 5,
+    "Sh'vat": 5,
     "Adar": 6, "Adar I": 61, "Adar II": 62,
     "Nisan": 7, "Iyyar": 8, "Sivan": 9, "Tamuz": 10, "Av": 11, "Elul": 12,
 }
