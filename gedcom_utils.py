@@ -176,8 +176,14 @@ def process_family_events(element, individuals, dates, family_details):
                 event_type_str = HEBREW_EVENT_NAMES.get(child.get_tag(), child.get_tag())
             gregorian_year = process_event(child, couple_name, dates, event_type=event_type_str, husband_id=husband_id, wife_id=wife_id)
 
-            if gregorian_year and child.get_tag() == "MARR":
-                family_details[couple_name] = {"marriage_year": gregorian_year}
+            if gregorian_year:
+                if couple_name not in family_details:
+                    family_details[couple_name] = {}
+
+                if child.get_tag() == "MARR":
+                    family_details[couple_name]['marriage_year'] = gregorian_year
+                elif child.get_tag() == "DIV":
+                    family_details[couple_name]['divorce_year'] = gregorian_year
 
 def process_event(event_element, name, dates, event_type=None, individual_id=None, husband_id=None, wife_id=None):
     """
@@ -329,6 +335,31 @@ def process_gedcom_file(file_path, output_csv_file):
             process_individual_events(element, name, dates, individual_details)
         elif element.get_tag() == "FAM":
             process_family_events(element, individuals, dates, family_details)
+
+    # Add death year details to families
+    for element in root_child_elements:
+        if element.get_tag() == "FAM":
+            husband_id, wife_id = None, None
+            for child in element.get_child_elements():
+                if child.get_tag() == 'HUSB':
+                    husband_id = child.get_value()
+                elif child.get_tag() == 'WIFE':
+                    wife_id = child.get_value()
+
+            husband_name = individuals.get(husband_id)
+            wife_name = individuals.get(wife_id)
+
+            if husband_name and wife_name:
+                couple_name = f"{husband_name} & {wife_name}"
+
+                husband_death_year = individual_details.get(husband_name, {}).get("death_year")
+                wife_death_year = individual_details.get(wife_name, {}).get("death_year")
+
+                if couple_name not in family_details:
+                    family_details[couple_name] = {}
+
+                family_details[couple_name]["husband_death_year"] = husband_death_year
+                family_details[couple_name]["wife_death_year"] = wife_death_year
 
     dates.sort(key=lambda x: (x[0], x[1]))
 

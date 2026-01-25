@@ -186,10 +186,23 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
                 age_str = f" (נפטר בגיל {age_at_death}, {years_since_death} שנים לפטירתו)"
         elif event_type == HEBREW_EVENT_NAMES["MARR"]:
             emoji = "💑"
-            marriage_year = family_details.get(name, {}).get("marriage_year")
+            family_info = family_details.get(name, {})
+            marriage_year = family_info.get("marriage_year")
+            divorce_year = family_info.get("divorce_year")
+            husband_death_year = family_info.get("husband_death_year")
+            wife_death_year = family_info.get("wife_death_year")
+
             if marriage_year:
-                years_married = gregorian_date.year - marriage_year
-                age_str = f" (נשואים: {years_married} שנים)"
+                if divorce_year:
+                    age_str = f" (נישאו בשנת {marriage_year})"
+                elif husband_death_year or wife_death_year:
+                    first_death_year = min(filter(None, [husband_death_year, wife_death_year]))
+                    if first_death_year >= marriage_year:
+                        marriage_duration = first_death_year - marriage_year
+                        age_str = f" (היו נשואים {marriage_duration} שנים)"
+                else:
+                    years_married = gregorian_date.year - marriage_year
+                    age_str = f" (נישואים: {years_married} שנים)"
 
         issue_body += f"#### **{emoji} {hebrew_weekday}, {original_date_str_parsed}**\n"
         issue_body += f"* **אירוע**: `{event_name}`\n"
