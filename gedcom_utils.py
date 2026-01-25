@@ -141,7 +141,7 @@ def process_individual_events(element, name, dates, individual_details):
                 elif child.get_tag() == "DEAT":
                     individual_details[name]["death_year"] = gregorian_year
 
-def process_family_events(element, individuals, dates):
+def process_family_events(element, individuals, dates, family_details):
     """
     Parses events (like marriage) for a single family unit.
 
@@ -153,6 +153,7 @@ def process_family_events(element, individuals, dates):
         element (Element): The GEDCOM `FAM` element for the family.
         individuals (dict): A dictionary mapping individual IDs to names.
         dates (list): A list to which extracted Hebrew date tuples are appended.
+        family_details (dict): A dictionary to store marriage years for the family.
     """
     husband_id = None
     wife_id = None
@@ -173,7 +174,10 @@ def process_family_events(element, individuals, dates):
             event_type_str = child.get_tag()
             if child.get_tag() == "MARR":
                 event_type_str = HEBREW_EVENT_NAMES.get(child.get_tag(), child.get_tag())
-            process_event(child, couple_name, dates, event_type=event_type_str, husband_id=husband_id, wife_id=wife_id)
+            gregorian_year = process_event(child, couple_name, dates, event_type=event_type_str, husband_id=husband_id, wife_id=wife_id)
+
+            if gregorian_year and child.get_tag() == "MARR":
+                family_details[couple_name] = {"marriage_year": gregorian_year}
 
 def process_event(event_element, name, dates, event_type=None, individual_id=None, husband_id=None, wife_id=None):
     """
@@ -310,6 +314,7 @@ def process_gedcom_file(file_path, output_csv_file):
     dates = []
     individuals = {}
     individual_details = {}
+    family_details = {}
 
     for element in root_child_elements:
         if element.get_tag() == "INDI":
@@ -323,7 +328,7 @@ def process_gedcom_file(file_path, output_csv_file):
             name = individuals.get(element.get_pointer(), "Unknown Individual")
             process_individual_events(element, name, dates, individual_details)
         elif element.get_tag() == "FAM":
-            process_family_events(element, individuals, dates)
+            process_family_events(element, individuals, dates, family_details)
 
     dates.sort(key=lambda x: (x[0], x[1]))
 
@@ -352,7 +357,7 @@ def process_gedcom_file(file_path, output_csv_file):
     
     logger.info(f"Data successfully written to {output_csv_file}")
     logger.debug(f"Dates list before returning: {dates}")
-    return csv_data_rows, individual_details
+    return csv_data_rows, individual_details, family_details
 
 def convert_keys_to_strings(some_dict):
     """

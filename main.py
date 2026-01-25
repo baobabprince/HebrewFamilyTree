@@ -116,7 +116,7 @@ def get_relationship(p1_id, p2_id, parser):
                     return "בת של"
 
     return "relative"
-def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold, person_id, parser, individual_details):
+def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold, person_id, parser, individual_details, family_details):
     """
     Constructs the Markdown body for the GitHub issue.
 
@@ -136,6 +136,7 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
                          are calculated.
         parser (Parser): The initialized GEDCOM parser instance.
         individual_details (dict): A dictionary with birth/death years for age calculation.
+        family_details (dict): A dictionary with marriage years for anniversary calculation.
 
     Returns:
         str: The formatted Markdown string for the GitHub issue body.
@@ -185,6 +186,10 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
                 age_str = f" (נפטר בגיל {age_at_death}, {years_since_death} שנים לפטירתו)"
         elif event_type == HEBREW_EVENT_NAMES["MARR"]:
             emoji = "💑"
+            marriage_year = family_details.get(name, {}).get("marriage_year")
+            if marriage_year:
+                years_married = gregorian_date.year - marriage_year
+                age_str = f" (נישואים: {years_married} שנים)"
 
         issue_body += f"#### **{emoji} {hebrew_weekday}, {original_date_str_parsed}**\n"
         issue_body += f"* **אירוע**: `{event_name}`\n"
@@ -241,7 +246,7 @@ def main():
     logging.info("Step 3: Processing GEDCOM …")
     person_id = os.environ.get('PERSONID')
     distance_threshold = os.environ.get('DISTANCE_THRESHOLD')
-    processed_rows, individual_details = process_gedcom_file(FIXED_GEDCOM_FILE, OUTPUT_CSV_FILE)
+    processed_rows, individual_details, family_details = process_gedcom_file(FIXED_GEDCOM_FILE, OUTPUT_CSV_FILE)
     logging.debug(f"Processed rows from GEDCOM: {processed_rows}")
 
     if not processed_rows:
@@ -293,7 +298,7 @@ def main():
 
     parasha = get_parasha_for_week(today_gregorian)
     issue_title = f"תאריכים עבריים קרובים {parasha}" if parasha else f"תאריכים עבריים קרובים: {today_gregorian.strftime('%Y-%m-%d')}"
-    issue_body = build_issue_body(enriched, id2name, today_gregorian, distance_threshold, person_id, gedcom_parser, individual_details)
+    issue_body = build_issue_body(enriched, id2name, today_gregorian, distance_threshold, person_id, gedcom_parser, individual_details, family_details)
 
     github_output_path = os.getenv("GITHUB_OUTPUT")
     if github_output_path:
