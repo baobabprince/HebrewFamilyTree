@@ -93,7 +93,7 @@ class TestMain(unittest.TestCase):
 
         # Assertions
         self.assertIn("💑", issue_body)
-        self.assertIn("(נישואים: 30 שנים)", issue_body)
+        self.assertIn("(נשואים: 30 שנים)", issue_body)
 
 if __name__ == '__main__':
     unittest.main()
