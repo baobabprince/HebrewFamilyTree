@@ -316,7 +316,7 @@ def main():
 
         enriched.append((dist, path, gregorian_date, original_date_str_parsed, name, event_type))
 
-    parasha = get_parasha_for_week(today_gregorian)
+    parasha = get_parasha_for_week(today_gregorian, lang)
     issue_title_base = get_translation(lang, "issue_title")
     issue_title = f"{issue_title_base} {parasha}" if parasha else f"{issue_title_base}: {today_gregorian.strftime('%Y-%m-%d')}"
     issue_body = build_issue_body(enriched, id2name, today_gregorian, distance_threshold, person_id, gedcom_parser, individual_details, family_details, lang)

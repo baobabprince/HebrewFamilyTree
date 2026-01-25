@@ -27,7 +27,7 @@ TRANSLATIONS = {
         "wednesday": "יום רביעי",
         "thursday": "יום חמישי",
         "friday": "יום שישי",
-        "saturday": "יום שבת",
+        "saturday": "שבת",
         "sunday": "יום ראשון",
         "birt": "יום הולדת",
         "deat": "יארצייט",
