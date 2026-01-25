@@ -15,7 +15,7 @@ TRANSLATIONS = {
         "yahrzeit_age_details": " (נפטר בגיל {age_at_death}, {years_since_death} שנים לפטירתו)",
         "anniversary_divorced": " (נישאו בשנת {marriage_year})",
         "anniversary_deceased": " (היו נשואים {marriage_duration} שנים)",
-        "anniversary_married": " (נישואים: {years_married} שנים)",
+        "anniversary_married": " (נשואים: {years_married} שנים)",
         "event_header": "#### **{emoji} {hebrew_weekday}, {original_date_str_parsed}**\n",
         "event_type_label": "* **אירוע**: `{event_name}`\n",
         "person_family_label": "* **אדם/משפחה**: `{name}{age_str}`\n",

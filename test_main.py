@@ -97,7 +97,7 @@ class TestMain(unittest.TestCase):
 
         # Assertions
         self.assertIn("💑", issue_body)
-        self.assertIn("(נישואים: 30 שנים)", issue_body)
+        self.assertIn("(נשואים: 30 שנים)", issue_body)
 
     def test_build_issue_body_anniversary_deceased_spouse(self):
         # Mock data for an anniversary where one spouse is deceased
