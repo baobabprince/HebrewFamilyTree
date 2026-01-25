@@ -21,7 +21,7 @@ class TestMain(unittest.TestCase):
         }
 
         # Generate the issue body
-        issue_body = build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold, person_id, parser, individual_details)
+        issue_body = build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold, person_id, parser, individual_details, {})
 
         # Assertions
         self.assertIn("🕯️", issue_body)
@@ -44,7 +44,7 @@ class TestMain(unittest.TestCase):
         }
 
         # Generate the issue body
-        issue_body = build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold, person_id, parser, individual_details)
+        issue_body = build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold, person_id, parser, individual_details, {})
 
         # Assertions
         self.assertIn("🎂", issue_body)
@@ -66,12 +66,34 @@ class TestMain(unittest.TestCase):
         }
 
         # Generate the issue body
-        issue_body = build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold, person_id, parser, individual_details)
+        issue_body = build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold, person_id, parser, individual_details, {})
 
         # Assertions
         self.assertIn("🪦", issue_body)
         self.assertIn("נפטר בגיל 70", issue_body)
         self.assertIn("4 שנים לפטירתו", issue_body)
+
+    def test_build_issue_body_anniversary(self):
+        # Mock data for an anniversary
+        enriched_list = [
+            (1, ['@I1@', '@I2@'], date(2024, 1, 1), 'א׳ בטבת', 'John Doe & Jane Doe', HEBREW_EVENT_NAMES['MARR'])
+        ]
+        id2name = {'@I1@': 'John Doe', '@I2@': 'Jane Doe'}
+        today_gregorian = date(2024, 1, 1)
+        distance_threshold = 1
+        person_id = '@I3@'
+        parser = Mock()
+        individual_details = {}
+        family_details = {
+            'John Doe & Jane Doe': {'marriage_year': 1994}
+        }
+
+        # Generate the issue body
+        issue_body = build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold, person_id, parser, individual_details, family_details)
+
+        # Assertions
+        self.assertIn("💑", issue_body)
+        self.assertIn("(נשואים: 30 שנים)", issue_body)
 
 if __name__ == '__main__':
     unittest.main()
