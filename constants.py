@@ -37,22 +37,6 @@ HEBREW_MONTH_NAMES_TO_NUM = {v: k for k, v in HEBREW_MONTH_NAMES_FULL.items()}
 HEBCAL_API_BASE_URL = "https://www.hebcal.com/converter"
 UPCOMING_DAYS = 8
 
-HEBREW_WEEKDAYS = {
-    "Monday": "יום שני",
-    "Tuesday": "יום שלישי",
-    "Wednesday": "יום רביעי",
-    "Thursday": "יום חמישי",
-    "Friday": "יום שישי",
-    "Saturday": "יום שבת",
-    "Sunday": "יום ראשון",
-}
-
-HEBREW_EVENT_NAMES = {
-    "BIRT": "יום הולדת",
-    "DEAT": "יארצייט",
-    "MARR": "יום נישואין"
-}
-
 GOOGLE_DRIVE_FILE_ID = os.environ.get('GOOGLE_DRIVE_FILE_ID', '1ZPt2FeXPueje3P6WqXfs_3-gsxi_G154')
 LOG_ALL_PATHS_DISTANCE_THRESHOLD = 3
 INPUT_GEDCOM_FILE = "tree.ged"
