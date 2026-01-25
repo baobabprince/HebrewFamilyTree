@@ -141,7 +141,7 @@ def find_relevant_hebrew_dates(processed_gedcom_rows, target_hebrew_dates_map, h
 
     return relevant_dates
 
-def get_parasha_for_week(start_date):
+def get_parasha_for_week(start_date, lang="he"):
     """
     Finds the Parashat Hashavua for the upcoming week using the /hebcal endpoint.
     """
@@ -154,7 +154,7 @@ def get_parasha_for_week(start_date):
         "cfg": "json",
         "start": start_date.strftime('%Y-%m-%d'),
         "end": end_date.strftime('%Y-%m-%d'),
-        "lg": "h",      # language=Hebrew
+        "lg": "h" if lang == "he" else "s",
         "s": "on",      # include weekly parasha
         "leyning": "off"
     }
@@ -167,9 +167,10 @@ def get_parasha_for_week(start_date):
 
         for item in data.get("items", []):
             if item.get("category") == "parashat":
-                hebrew_name = item.get("hebrew", "")
-                logging.info(f"Found Parasha: {hebrew_name}")
-                return hebrew_name
+                if lang == "he":
+                    return item.get("hebrew", "")
+                else:
+                    return item.get("title", "")
         
         logging.warning("No Parasha found in Hebcal API response for the upcoming week.")
         return ""

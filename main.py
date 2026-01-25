@@ -10,17 +10,19 @@ New features compared to original:
 
 import os
 import logging
+import argparse
 from datetime import date, timedelta
 
 from constants import (
     GOOGLE_DRIVE_FILE_ID, INPUT_GEDCOM_FILE, FIXED_GEDCOM_FILE, OUTPUT_CSV_FILE,
-    HEBREW_WEEKDAYS, HEBREW_EVENT_NAMES, DISTANCE_THRESHOLD
+    DISTANCE_THRESHOLD
 )
 from google_drive_utils import download_gedcom_from_drive
 from gedcom_utils import fix_gedcom_format, process_gedcom_file
 from hebcal_api import get_hebrew_date_range_api, find_relevant_hebrew_dates, get_parasha_for_week
 from gedcom.parser import Parser
 from gedcom_graph import build_graph, distance_and_path
+from localization import get_translation
 # ------------------------------------------------------------------ logging
 logging.basicConfig(
     level=logging.DEBUG,
@@ -30,7 +32,7 @@ logging.basicConfig(
 logging.getLogger().setLevel(logging.INFO)
 
 # ------------------------------------------------------------------ helpers
-def get_relationship(p1_id, p2_id, parser):
+def get_relationship(p1_id, p2_id, parser, lang="he"):
     """
     Determines the direct relationship between two individuals in the family tree.
 
@@ -81,9 +83,9 @@ def get_relationship(p1_id, p2_id, parser):
             if (p1.get_pointer() == husband_id and p2.get_pointer() == wife_id) or \
                (p1.get_pointer() == wife_id and p2.get_pointer() == husband_id):
                 if p1.get_gender() == "M":
-                    return "בעלה של"
+                    return get_translation(lang, "husband_of")
                 else:
-                    return "אשתו של"
+                    return get_translation(lang, "wife_of")
 
     # --- Check 2: p1 is Parent of p2 (Look up p2's FAMC) ---
     p2_famc_element = find_sub_element(p2, 'FAMC')
@@ -95,9 +97,9 @@ def get_relationship(p1_id, p2_id, parser):
             husband_id, wife_id = get_husband_and_wife_ids(p2_child_family)
             
             if husband_id and p1.get_pointer() == husband_id:
-                return "אבא של"
+                return get_translation(lang, "father_of")
             if wife_id and p1.get_pointer() == wife_id:
-                return "אמא של"
+                return get_translation(lang, "mother_of")
 
     # --- Check 3: p2 is Parent of p1 (Look up p1's FAMC) ---
     p1_famc_element = find_sub_element(p1, 'FAMC')
@@ -111,12 +113,12 @@ def get_relationship(p1_id, p2_id, parser):
             if (husband_id and p2.get_pointer() == husband_id) or \
                (wife_id and p2.get_pointer() == wife_id):
                 if p1.get_gender() == "M":
-                    return "בן של"
+                    return get_translation(lang, "son_of")
                 else:
-                    return "בת של"
+                    return get_translation(lang, "daughter_of")
 
-    return "relative"
-def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold, person_id, parser, individual_details, family_details):
+    return get_translation(lang, "relative")
+def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold, person_id, parser, individual_details, family_details, lang="he"):
     """
     Constructs the Markdown body for the GitHub issue.
 
@@ -142,8 +144,8 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
         str: The formatted Markdown string for the GitHub issue body.
     """
     issue_body = (
-        f"## תאריכים עבריים קרובים "
-        f"({today_gregorian.strftime('%Y-%m-%d')} עד "
+        f"## {get_translation(lang, 'upcoming_hebrew_dates')} "
+        f"({today_gregorian.strftime('%Y-%m-%d')} - "
         f"{(today_gregorian + timedelta(days=7)).strftime('%Y-%m-%d')})\n\n"
     )
 
@@ -151,13 +153,13 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
     enriched_list.sort(key=lambda t: (t[2], t[0]))
 
     for dist, path, gregorian_date, original_date_str_parsed, name, event_type in enriched_list:
-        hebrew_weekday = HEBREW_WEEKDAYS.get(gregorian_date.strftime('%A'), gregorian_date.strftime('%A'))
-        event_name = HEBREW_EVENT_NAMES.get(event_type, event_type)
+        hebrew_weekday = get_translation(lang, gregorian_date.strftime('%A').lower())
+        event_name = get_translation(lang, event_type.lower())
 
         # --- Emojis and Age ---
         emoji = ""
         age_str = ""
-        if event_type == HEBREW_EVENT_NAMES["BIRT"]:
+        if event_type == "BIRT":
             birth_year = individual_details.get(name, {}).get("birth_year")
             death_year = individual_details.get(name, {}).get("death_year")
 
@@ -166,25 +168,25 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
                 emoji = "🕯️"
                 age_at_death = death_year - birth_year
                 years_since_birth = gregorian_date.year - birth_year
-                age_str = f" (נפטר בגיל {age_at_death}, {years_since_birth} שנים מאז לידתו)"
+                age_str = get_translation(lang, "deceased_birthday_age_details", age_at_death=age_at_death, years_since_birth=years_since_birth)
             elif birth_year:
                 # Living person's birthday
                 emoji = "🎂"
                 age = gregorian_date.year - birth_year
-                age_str = f" (גיל {age})"
+                age_str = get_translation(lang, "birthday_age", age=age)
             else:
                 # Birthday event, but no birth year data
                 emoji = "🎂"
 
-        elif event_type == HEBREW_EVENT_NAMES["DEAT"]:
+        elif event_type == "DEAT":
             emoji = "🪦"
             if name in individual_details and individual_details[name].get("birth_year") and individual_details[name].get("death_year"):
                 birth_year = individual_details[name]["birth_year"]
                 death_year = individual_details[name]["death_year"]
                 age_at_death = death_year - birth_year
                 years_since_death = gregorian_date.year - death_year
-                age_str = f" (נפטר בגיל {age_at_death}, {years_since_death} שנים לפטירתו)"
-        elif event_type == HEBREW_EVENT_NAMES["MARR"]:
+                age_str = get_translation(lang, "yahrzeit_age_details", age_at_death=age_at_death, years_since_death=years_since_death)
+        elif event_type == "MARR":
             emoji = "💑"
             family_info = family_details.get(name, {})
             marriage_year = family_info.get("marriage_year")
@@ -194,19 +196,19 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
 
             if marriage_year:
                 if divorce_year:
-                    age_str = f" (נישאו בשנת {marriage_year})"
+                    age_str = get_translation(lang, "anniversary_divorced", marriage_year=marriage_year)
                 elif husband_death_year or wife_death_year:
                     first_death_year = min(filter(None, [husband_death_year, wife_death_year]))
                     if first_death_year >= marriage_year:
                         marriage_duration = first_death_year - marriage_year
-                        age_str = f" (היו נשואים {marriage_duration} שנים)"
+                        age_str = get_translation(lang, "anniversary_deceased", marriage_duration=marriage_duration)
                 else:
                     years_married = gregorian_date.year - marriage_year
-                    age_str = f" (נישואים: {years_married} שנים)"
+                    age_str = get_translation(lang, "anniversary_married", years_married=years_married)
 
-        issue_body += f"#### **{emoji} {hebrew_weekday}, {original_date_str_parsed}**\n"
-        issue_body += f"* **אירוע**: `{event_name}`\n"
-        issue_body += f"* **אדם/משפחה**: `{name}{age_str}`\n"
+        issue_body += get_translation(lang, "event_header", emoji=emoji, hebrew_weekday=hebrew_weekday, original_date_str_parsed=original_date_str_parsed)
+        issue_body += get_translation(lang, "event_type_label", event_name=event_name)
+        issue_body += get_translation(lang, "person_family_label", name=name, age_str=age_str)
 
         if person_id and dist is not None and dist > distance_threshold and path:
             path_parts = []
@@ -215,13 +217,13 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
                 p1_id = reversed_path[i]
                 p2_id = reversed_path[i+1]
                 p1_name = id2name.get(p1_id, p1_id)
-                relationship = get_relationship(p1_id, p2_id, parser)
+                relationship = get_relationship(p1_id, p2_id, parser, lang)
                 path_parts.append(f"{p1_name} ({relationship})")
             
             path_parts.append(id2name.get(reversed_path[-1], reversed_path[-1]))
             readable_path = " ".join(path_parts)
-            issue_body += f"* **מרחק**: `{dist}`\n"
-            issue_body += f"* **נתיב**: `{readable_path}`\n"
+            issue_body += get_translation(lang, "distance_label", dist=dist)
+            issue_body += get_translation(lang, "path_label", readable_path=readable_path)
         issue_body += "\n"
 
     return issue_body
@@ -244,6 +246,11 @@ def main():
     9.  Writes the issue content to the `GITHUB_OUTPUT` file for use in a
         GitHub Actions workflow.
     """
+    parser = argparse.ArgumentParser(description="Generate GitHub issues for upcoming Hebrew calendar events.")
+    parser.add_argument("--lang", default="he", choices=["he", "en"], help="Language for the issue (he for Hebrew, en for English).")
+    args = parser.parse_args()
+    lang = args.lang
+
     logging.info("Step 1: Downloading GEDCOM from Google Drive …")
     if not download_gedcom_from_drive(GOOGLE_DRIVE_FILE_ID, INPUT_GEDCOM_FILE):
         logging.error("Failed to download GEDCOM. Exiting.")
@@ -309,9 +316,10 @@ def main():
 
         enriched.append((dist, path, gregorian_date, original_date_str_parsed, name, event_type))
 
-    parasha = get_parasha_for_week(today_gregorian)
-    issue_title = f"תאריכים עבריים קרובים {parasha}" if parasha else f"תאריכים עבריים קרובים: {today_gregorian.strftime('%Y-%m-%d')}"
-    issue_body = build_issue_body(enriched, id2name, today_gregorian, distance_threshold, person_id, gedcom_parser, individual_details, family_details)
+    parasha = get_parasha_for_week(today_gregorian, lang)
+    issue_title_base = get_translation(lang, "issue_title")
+    issue_title = f"{issue_title_base} {parasha}" if parasha else f"{issue_title_base}: {today_gregorian.strftime('%Y-%m-%d')}"
+    issue_body = build_issue_body(enriched, id2name, today_gregorian, distance_threshold, person_id, gedcom_parser, individual_details, family_details, lang)
 
     github_output_path = os.getenv("GITHUB_OUTPUT")
     if github_output_path:

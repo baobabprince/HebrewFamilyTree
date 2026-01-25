@@ -3,8 +3,9 @@ import csv
 import logging
 from gedcom.parser import Parser
 from gedcom.element.element import Element
-from constants import HEBREW_MONTHS_MAP, HEBREW_EVENT_NAMES, HEBREW_MONTH_NAMES_FULL, HEBREW_DAY_TO_NUM
+from constants import HEBREW_MONTHS_MAP, HEBREW_MONTH_NAMES_FULL, HEBREW_DAY_TO_NUM
 from hebcal_api import get_gregorian_date_from_hebrew_api
+from localization import get_translation
 
 # Configure logging for gedcom_utils
 logger = logging.getLogger(__name__)
@@ -132,7 +133,7 @@ def process_individual_events(element, name, dates, individual_details):
     ]
     for child in element.get_child_elements():
         if child.get_tag() in individual_event_tags:
-            event_type_str = HEBREW_EVENT_NAMES.get(child.get_tag(), child.get_tag())
+            event_type_str = child.get_tag()
             gregorian_year = process_event(child, name, dates, event_type=event_type_str, individual_id=individual_id)
 
             if gregorian_year:
@@ -172,8 +173,6 @@ def process_family_events(element, individuals, dates, family_details):
     for child in element.get_child_elements():
         if child.get_tag() in family_event_tags:
             event_type_str = child.get_tag()
-            if child.get_tag() == "MARR":
-                event_type_str = HEBREW_EVENT_NAMES.get(child.get_tag(), child.get_tag())
             gregorian_year = process_event(child, couple_name, dates, event_type=event_type_str, husband_id=husband_id, wife_id=wife_id)
 
             if gregorian_year:
@@ -373,7 +372,7 @@ def process_gedcom_file(file_path, output_csv_file):
             id_to_write = individual_id if individual_id else (husband_id if husband_id else (wife_id if wife_id else ""))
 
             # For marriage events, you might want to store both IDs
-            if event_type == HEBREW_EVENT_NAMES.get("MARR") and husband_id and wife_id:
+            if event_type == "MARR" and husband_id and wife_id:
                 id_to_write = f"{husband_id},{wife_id}"
 
             csv_data_rows.append([original_date_str_parsed, name, event_type, id_to_write])
