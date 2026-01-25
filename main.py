@@ -189,7 +189,7 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
             marriage_year = family_details.get(name, {}).get("marriage_year")
             if marriage_year:
                 years_married = gregorian_date.year - marriage_year
-                age_str = f" (נישואים: {years_married} שנים)"
+                age_str = f" (נשואים: {years_married} שנים)"
 
         issue_body += f"#### **{emoji} {hebrew_weekday}, {original_date_str_parsed}**\n"
         issue_body += f"* **אירוע**: `{event_name}`\n"
