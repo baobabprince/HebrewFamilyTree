@@ -15,6 +15,14 @@ on:
         required: false
         type: number
         default: "8"
+      lang:
+        description: 'Language for the output (en/he)'
+        required: false
+        type: choice
+        options:
+        - he
+        - en
+        default: 'he'
 
 permissions:
   contents: write
@@ -43,7 +51,7 @@ jobs:
 
       - name: Run main processing script
         id: process_gedcom
-        run: python main.py
+        run: python main.py --lang ${{ github.event.inputs.lang || 'he' }}
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
           PERSONID: ${{ github.event.inputs.person_id || secrets.PERSONID }}
