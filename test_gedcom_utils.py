@@ -15,7 +15,7 @@ from gedcom_utils import (
     process_family_events,
     process_gedcom_file
 )
-from constants import HEBREW_MONTHS_MAP, HEBREW_EVENT_NAMES, HEBREW_MONTH_NAMES_FULL, HEBREW_DAY_TO_NUM
+from constants import HEBREW_MONTHS_MAP, HEBREW_MONTH_NAMES_FULL, HEBREW_DAY_TO_NUM
 
 class TestGedcomUtils(unittest.TestCase):
 

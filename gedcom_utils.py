@@ -326,7 +326,8 @@ def process_gedcom_file(file_path, output_csv_file):
             individual_id = element.get_pointer()
             name = get_name_from_individual(element)
             individuals[individual_id] = name
-            individual_details[name] = {"birth_year": None, "death_year": None}
+            gender = element.get_gender()
+            individual_details[name] = {"birth_year": None, "death_year": None, "gender": gender}
 
     for element in root_child_elements:
         if element.get_tag() == "INDI":
