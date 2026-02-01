@@ -160,15 +160,18 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
         emoji = ""
         age_str = ""
         if event_type == "BIRT":
-            birth_year = individual_details.get(name, {}).get("birth_year")
-            death_year = individual_details.get(name, {}).get("death_year")
+            details = individual_details.get(name, {})
+            birth_year = details.get("birth_year")
+            death_year = details.get("death_year")
+            gender = details.get("gender", "M")
 
             if death_year and birth_year:
                 # Deceased person's birthday
                 emoji = "🕯️"
                 age_at_death = death_year - birth_year
                 years_since_birth = gregorian_date.year - birth_year
-                age_str = get_translation(lang, "deceased_birthday_age_details", age_at_death=age_at_death, years_since_birth=years_since_birth)
+                key = "deceased_birthday_age_details_female" if gender == "F" else "deceased_birthday_age_details_male"
+                age_str = get_translation(lang, key, age_at_death=age_at_death, years_since_birth=years_since_birth)
             elif birth_year:
                 # Living person's birthday
                 emoji = "🎂"
@@ -180,12 +183,20 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
 
         elif event_type == "DEAT":
             emoji = "🪦"
-            if name in individual_details and individual_details[name].get("birth_year") and individual_details[name].get("death_year"):
-                birth_year = individual_details[name]["birth_year"]
-                death_year = individual_details[name]["death_year"]
-                age_at_death = death_year - birth_year
+            details = individual_details.get(name, {})
+            birth_year = details.get("birth_year")
+            death_year = details.get("death_year")
+            gender = details.get("gender", "M")
+
+            if death_year:
                 years_since_death = gregorian_date.year - death_year
-                age_str = get_translation(lang, "yahrzeit_age_details", age_at_death=age_at_death, years_since_death=years_since_death)
+                if birth_year:
+                    age_at_death = death_year - birth_year
+                    key = "yahrzeit_age_details_female" if gender == "F" else "yahrzeit_age_details_male"
+                    age_str = get_translation(lang, key, age_at_death=age_at_death, years_since_death=years_since_death)
+                else:
+                    key = "yahrzeit_years_only_female" if gender == "F" else "yahrzeit_years_only_male"
+                    age_str = get_translation(lang, key, years_since_death=years_since_death)
         elif event_type == "MARR":
             emoji = "💑"
             family_info = family_details.get(name, {})
