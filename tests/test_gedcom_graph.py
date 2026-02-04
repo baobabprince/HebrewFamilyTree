@@ -1,4 +1,5 @@
 import unittest
+import os
 from gedcom_graph import build_graph, distance_and_path
 
 class TestGedcomGraph(unittest.TestCase):
@@ -23,6 +24,10 @@ class TestGedcomGraph(unittest.TestCase):
             f.write("1 WIFE @I4@\n")
 
         self.graph, self.indi = build_graph("test.ged")
+
+    def tearDown(self):
+        if os.path.exists("test.ged"):
+            os.remove("test.ged")
 
     def test_distance_and_path_direct_connection(self):
         # Test path between husband and wife

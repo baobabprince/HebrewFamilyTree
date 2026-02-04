@@ -69,11 +69,10 @@ The application follows a modular architecture, with each module responsible for
 
 ## Running Tests
 
-The project uses Python's built-in `unittest` framework. To run the tests, execute the test files directly from the root of the repository:
+The project uses Python's built-in `unittest` framework. To run the tests, use the following command from the root of the repository:
 
 ```bash
-python3 test_gedcom_graph.py
-python3 test_gedcom_utils.py
+python3 -m unittest discover tests
 ```
 
 ## Contributing

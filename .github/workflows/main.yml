@@ -49,6 +49,9 @@ jobs:
       - name: Debug - List Environment Variables
         run: env
 
+      - name: Run tests
+        run: python3 -m unittest discover tests
+
       - name: Run main processing script
         id: process_gedcom
         run: python main.py --lang ${{ github.event.inputs.lang || 'he' }}

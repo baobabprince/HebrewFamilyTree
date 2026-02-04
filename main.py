@@ -23,13 +23,6 @@ from hebcal_api import get_hebrew_date_range_api, find_relevant_hebrew_dates, ge
 from gedcom.parser import Parser
 from gedcom_graph import build_graph, distance_and_path
 from localization import get_translation
-# ------------------------------------------------------------------ logging
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[logging.FileHandler("app.log"), logging.StreamHandler()]
-)
-logging.getLogger().setLevel(logging.INFO)
 
 # ------------------------------------------------------------------ helpers
 def get_relationship(p1_id, p2_id, parser, lang="he"):
@@ -261,6 +254,14 @@ def main():
     parser.add_argument("--lang", default="he", choices=["he", "en"], help="Language for the issue (he for Hebrew, en for English).")
     args = parser.parse_args()
     lang = args.lang
+
+    # ------------------------------------------------------------------ logging
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[logging.FileHandler("app.log"), logging.StreamHandler()]
+    )
+    logging.getLogger().setLevel(logging.INFO)
 
     logging.info("Step 1: Downloading GEDCOM from Google Drive …")
     if not download_gedcom_from_drive(GOOGLE_DRIVE_FILE_ID, INPUT_GEDCOM_FILE):
