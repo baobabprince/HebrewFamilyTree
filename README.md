@@ -60,6 +60,32 @@ Upon completion, a GitHub issue will be created with the upcoming events.
 
 בסיום הריצה, ייווצר issue חדש ב-GitHub עם התאריכים הקרובים.
 
+## Testing / בדיקות
+
+### English
+
+To run the project tests, use the following command:
+```bash
+python3 -m unittest discover tests
+```
+
+### Example File
+
+A clean example GEDCOM file is provided as `example.ged` to demonstrate the supported Hebrew date format (`@#DHEBREW@`) and basic family tree structure.
+
+---
+
+### עברית
+
+כדי להריץ את הבדיקות של הפרויקט, השתמשו בפקודה הבאה:
+```bash
+python3 -m unittest discover tests
+```
+
+### קובץ דוגמה
+
+קובץ GEDCOM נקי לדוגמה (`example.ged`) זמין בריפו כדי להדגים את פורמט התאריכים העבריים הנתמך (`@#DHEBREW@`) ומבנה בסיסי של עץ משפחה.
+
 ## License
 
 This project is licensed under the MIT License.
