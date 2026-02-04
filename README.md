@@ -69,13 +69,9 @@ To run the project tests, use the following command:
 python3 -m unittest discover tests
 ```
 
-### Utility Scripts
-
-Standalone utility scripts are located in the `scripts/` directory.
-
 ### Example File
 
-An example GEDCOM file is provided as `example.ged` for testing and maintenance.
+A clean example GEDCOM file is provided as `example.ged` to demonstrate the supported Hebrew date format (`@#DHEBREW@`) and basic family tree structure.
 
 ---
 
@@ -86,13 +82,9 @@ An example GEDCOM file is provided as `example.ged` for testing and maintenance.
 python3 -m unittest discover tests
 ```
 
-### סקריפטים שימושיים
-
-סקריפטים שימושיים (utilities) נמצאים בתיקיית `scripts/`.
-
 ### קובץ דוגמה
 
-קובץ GEDCOM לדוגמה `example.ged` זמין בריפו לצרכי בדיקות ותחזוקה.
+קובץ GEDCOM נקי לדוגמה (`example.ged`) זמין בריפו כדי להדגים את פורמט התאריכים העבריים הנתמך (`@#DHEBREW@`) ומבנה בסיסי של עץ משפחה.
 
 ## License
 
