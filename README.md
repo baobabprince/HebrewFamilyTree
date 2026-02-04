@@ -69,6 +69,14 @@ To run the project tests, use the following command:
 python3 -m unittest discover tests
 ```
 
+### Utility Scripts
+
+Standalone utility scripts are located in the `scripts/` directory.
+
+### Example File
+
+An example GEDCOM file is provided as `example.ged` for testing and maintenance.
+
 ---
 
 ### עברית
@@ -77,6 +85,14 @@ python3 -m unittest discover tests
 ```bash
 python3 -m unittest discover tests
 ```
+
+### סקריפטים שימושיים
+
+סקריפטים שימושיים (utilities) נמצאים בתיקיית `scripts/`.
+
+### קובץ דוגמה
+
+קובץ GEDCOM לדוגמה `example.ged` זמין בריפו לצרכי בדיקות ותחזוקה.
 
 ## License
 
