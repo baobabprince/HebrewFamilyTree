@@ -6,7 +6,7 @@ from gedcom.parser import Parser
 # from gedcom.element.individual import IndividualElement
 # from gedcom.element.family import FamilyElement
 from gedcom.element.element import Element # Import Element to use its constructor properly
-from gedcom_utils import (
+from family_tree_notifier.gedcom_utils import (
     get_hebrew_day_string,
     fix_gedcom_format,
     get_name_from_individual,
@@ -15,7 +15,7 @@ from gedcom_utils import (
     process_family_events,
     process_gedcom_file
 )
-from constants import HEBREW_MONTHS_MAP, HEBREW_MONTH_NAMES_FULL, HEBREW_DAY_TO_NUM
+from family_tree_notifier.constants import HEBREW_MONTHS_MAP, HEBREW_MONTH_NAMES_FULL, HEBREW_DAY_TO_NUM
 
 class TestGedcomUtils(unittest.TestCase):
 
@@ -129,12 +129,12 @@ class TestGedcomUtils(unittest.TestCase):
         
         # Enable logging temporarily for this test to capture warnings
         logging.disable(logging.NOTSET)
-        with self.assertLogs('gedcom_utils', level='WARNING') as cm:
+        with self.assertLogs('family_tree_notifier.gedcom_utils', level='WARNING') as cm:
             fix_gedcom_format(self.test_ged_path, self.fixed_ged_path)
             self.assertEqual(len(cm.output), 2) # Expect two warning messages
-            self.assertIn("WARNING:gedcom_utils:Dropping non-GEDCOM-compliant line: This is an invalid line", cm.output[0])
+            self.assertIn("WARNING:family_tree_notifier.gedcom_utils:Dropping non-GEDCOM-compliant line: This is an invalid line", cm.output[0])
             # The line is stripped before logging, so the expected string should reflect that
-            self.assertIn("WARNING:gedcom_utils:Dropping non-GEDCOM-compliant line: Another invalid line with too many spaces", cm.output[1])
+            self.assertIn("WARNING:family_tree_notifier.gedcom_utils:Dropping non-GEDCOM-compliant line: Another invalid line with too many spaces", cm.output[1])
         logging.disable(logging.CRITICAL) # Re-suppress logging
 
         with open(self.fixed_ged_path, "r", encoding="utf-8") as f:
@@ -185,7 +185,7 @@ class TestGedcomUtils(unittest.TestCase):
         self.assertEqual(fixed_content, expected_content)
     
     # Test cases for process_event
-    @patch('gedcom_utils.logger') # Patch the logger specifically
+    @patch('family_tree_notifier.gedcom_utils.logger') # Patch the logger specifically
     def test_process_event_hebrew_date_basic(self, mock_logger):
         mock_date_child = MagicMock()
         mock_date_child.get_tag.return_value = "DATE"
@@ -209,7 +209,7 @@ class TestGedcomUtils(unittest.TestCase):
         self.assertEqual(dates[0][2], "טו כסלו")
         self.assertEqual(dates[0][3], "Test Person - Birth: טו כסלו")
     
-    @patch('gedcom_utils.logger')
+    @patch('family_tree_notifier.gedcom_utils.logger')
     def test_process_event_hebrew_date_with_gregorian_year(self, mock_logger):
         mock_date_child = MagicMock()
         mock_date_child.get_tag.return_value = "DATE"
@@ -232,7 +232,7 @@ class TestGedcomUtils(unittest.TestCase):
         self.assertEqual(dates[0][2], "י טבת")
         self.assertEqual(dates[0][3], "Test Person - Death: י טבת")
 
-    @patch('gedcom_utils.logger')
+    @patch('family_tree_notifier.gedcom_utils.logger')
     def test_process_event_hebrew_date_no_day(self, mock_logger):
         mock_date_child = MagicMock()
         mock_date_child.get_tag.return_value = "DATE"
@@ -255,7 +255,7 @@ class TestGedcomUtils(unittest.TestCase):
         self.assertEqual(dates[0][2], "א אדר א")
         self.assertEqual(dates[0][3], "Test Person - Birth: א אדר א")
 
-    @patch('gedcom_utils.logger')
+    @patch('family_tree_notifier.gedcom_utils.logger')
     def test_process_event_gregorian_date_only(self, mock_logger):
         mock_date_child = MagicMock()
         mock_date_child.get_tag.return_value = "DATE"
@@ -274,7 +274,7 @@ class TestGedcomUtils(unittest.TestCase):
         self.assertEqual(greg_year, 1900)
         self.assertEqual(len(dates), 0) # Should not add Gregorian-only dates to 'dates' list
 
-    @patch('gedcom_utils.logger')
+    @patch('family_tree_notifier.gedcom_utils.logger')
     def test_process_event_empty_date(self, mock_logger):
         mock_date_child = MagicMock()
         mock_date_child.get_tag.return_value = "DATE"
@@ -293,7 +293,7 @@ class TestGedcomUtils(unittest.TestCase):
         self.assertEqual(greg_year, None)
         self.assertEqual(len(dates), 0)
     
-    @patch('gedcom_utils.logger')
+    @patch('family_tree_notifier.gedcom_utils.logger')
     def test_process_event_no_date_tag(self, mock_logger):
         mock_plac_child = MagicMock()
         mock_plac_child.get_tag.return_value = "PLAC"
@@ -312,7 +312,7 @@ class TestGedcomUtils(unittest.TestCase):
         self.assertEqual(greg_year, None)
         self.assertEqual(len(dates), 0)
 
-    @patch('gedcom_utils.logger')
+    @patch('family_tree_notifier.gedcom_utils.logger')
     def test_process_event_hebrew_date_with_qualifier(self, mock_logger):
         mock_date_child = MagicMock()
         mock_date_child.get_tag.return_value = "DATE"
@@ -335,7 +335,7 @@ class TestGedcomUtils(unittest.TestCase):
         self.assertEqual(dates[0][2], "י סיון")
         self.assertEqual(dates[0][3], "Test Person - Birth: י סיון")
     
-    @patch('gedcom_utils.logger')
+    @patch('family_tree_notifier.gedcom_utils.logger')
     def test_process_event_hebrew_date_with_and_qualifier(self, mock_logger):
         mock_date_child = MagicMock()
         mock_date_child.get_tag.return_value = "DATE"
