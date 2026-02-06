@@ -1,6 +1,6 @@
 import unittest
 import os
-from gedcom_graph import build_graph, distance_and_path
+from family_tree_notifier.gedcom_graph import build_graph, distance_and_path
 
 class TestGedcomGraph(unittest.TestCase):
 

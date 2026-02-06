@@ -17,19 +17,21 @@ The application follows a modular architecture, with each module responsible for
 
 ## Module Responsibilities
 
--   `main.py`: This is the main entry point and orchestrator of the application. It calls the other modules in sequence to execute the workflow.
--   `google_drive_utils.py`: Handles all interactions with the Google Drive API, including authentication and file downloading.
--   `gedcom_utils.py`: Responsible for cleaning the raw GEDCOM file, parsing it to extract events, and handling the complexities of Hebrew date formats.
--   `gedcom_graph.py`: Builds the `networkx` graph representation of the family tree and provides functions for calculating the shortest path between individuals.
--   `hebcal_api.py`: Contains functions for interacting with the Hebcal API to fetch Hebrew date information and the weekly Torah portion (parasha).
--   `constants.py`: A centralized module for storing application-wide constants, such as file paths, API endpoints, and mappings for Hebrew months and events.
+All core logic resides within the `family_tree_notifier/` package:
+
+-   `family_tree_notifier/main.py`: This is the main entry point and orchestrator of the application. It calls the other modules in sequence to execute the workflow.
+-   `family_tree_notifier/google_drive_utils.py`: Handles all interactions with the Google Drive API, including authentication and file downloading.
+-   `family_tree_notifier/gedcom_utils.py`: Responsible for cleaning the raw GEDCOM file, parsing it to extract events, and handling the complexities of Hebrew date formats.
+-   `family_tree_notifier/gedcom_graph.py`: Builds the `networkx` graph representation of the family tree and provides functions for calculating the shortest path between individuals.
+-   `family_tree_notifier/hebcal_api.py`: Contains functions for interacting with the Hebcal API to fetch Hebrew date information and the weekly Torah portion (parasha).
+-   `family_tree_notifier/constants.py`: A centralized module for storing application-wide constants, such as file paths, API endpoints, and mappings for Hebrew months and events.
 
 ## Data Flow
 
 1.  **Input**: The primary input is a GEDCOM file (`tree.ged`), typically stored on Google Drive.
-2.  **Cleaning**: `gedcom_utils.fix_gedcom_format()` reads the input file and produces a cleaned version, `fixed_tree.ged`.
+2.  **Cleaning**: `gedcom_utils.fix_gedcom_format()` (in `family_tree_notifier/gedcom_utils.py`) reads the input file and produces a cleaned version, `fixed_tree.ged`.
 3.  **Parsing**: `gedcom_utils.process_gedcom_file()` parses `fixed_tree.ged` and generates `dates.csv`, which contains a list of all Hebrew date events found in the file.
-4.  **Enrichment**: In `main.py`, the data from `dates.csv` is filtered against the upcoming week's dates from the Hebcal API. This filtered list is then enriched with genealogical distance and path information.
+4.  **Enrichment**: In `family_tree_notifier/main.py`, the data from `dates.csv` is filtered against the upcoming week's dates from the Hebcal API. This filtered list is then enriched with genealogical distance and path information.
 5.  **Output**: The final enriched data is formatted into a Markdown string, which is then passed to the `GITHUB_OUTPUT` file in the GitHub Actions environment to be used as the body of the GitHub issue.
 
 ## Key Data Structures
@@ -61,7 +63,11 @@ The application follows a modular architecture, with each module responsible for
     pip install -r requirements.txt
     ```
 4.  **Local GEDCOM File**: For local development, you can bypass the Google Drive download by placing a GEDCOM file named `tree.ged` in the root of the repository.
-5.  **Environment Variables**: The application is configured via environment variables. For local testing, you can set them in your shell:
+5.  **Running the Script**: To run the script locally, use:
+    ```bash
+    python3 -m family_tree_notifier.main --lang en
+    ```
+6.  **Environment Variables**: The application is configured via environment variables. For local testing, you can set them in your shell:
     ```bash
     export PERSONID="@I1@"  # The root person for distance calculations
     export DISTANCE_THRESHOLD=8  # The threshold for displaying paths

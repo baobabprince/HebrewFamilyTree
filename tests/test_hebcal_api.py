@@ -1,10 +1,10 @@
 import unittest
 from unittest.mock import patch, MagicMock
 from datetime import date
-from hebcal_api import get_hebrew_date_from_api, get_gregorian_date_from_hebrew_api, get_parasha_for_week
+from family_tree_notifier.hebcal_api import get_hebrew_date_from_api, get_gregorian_date_from_hebrew_api, get_parasha_for_week
 
 class TestHebcalApi(unittest.TestCase):
-    @patch('hebcal_api.requests.get')
+    @patch('family_tree_notifier.hebcal_api.requests.get')
     def test_get_hebrew_date_from_api_shvat(self, mock_get):
         # Test cases for 5 upcoming dates in Sh'vat 5785 (Jan/Feb 2025)
         test_cases = [
@@ -30,7 +30,7 @@ class TestHebcalApi(unittest.TestCase):
                 # Assert the expected outcome
                 self.assertEqual(result, (expected_month, expected_day))
 
-    @patch('hebcal_api.requests.get')
+    @patch('family_tree_notifier.hebcal_api.requests.get')
     def test_get_parasha_for_week_hebrew(self, mock_get):
         # Configure the mock response from Hebcal API
         mock_response = MagicMock()
@@ -47,7 +47,7 @@ class TestHebcalApi(unittest.TestCase):
         # Assert the expected outcome
         self.assertEqual(result, "פרשת ויחי")
 
-    @patch('hebcal_api.requests.get')
+    @patch('family_tree_notifier.hebcal_api.requests.get')
     def test_get_parasha_for_week_english(self, mock_get):
         # Configure the mock response from Hebcal API
         mock_response = MagicMock()

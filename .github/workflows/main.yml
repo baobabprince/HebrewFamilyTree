@@ -51,7 +51,7 @@ jobs:
 
       - name: Run main processing script
         id: process_gedcom
-        run: python main.py --lang ${{ github.event.inputs.lang || 'he' }}
+        run: python -m family_tree_notifier.main --lang ${{ github.event.inputs.lang || 'he' }}
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
           PERSONID: ${{ github.event.inputs.person_id || secrets.PERSONID }}

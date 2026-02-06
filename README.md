@@ -71,7 +71,7 @@ python3 -m unittest discover tests
 
 ### Example File
 
-A clean example GEDCOM file is provided as `example.ged` to demonstrate the supported Hebrew date format (`@#DHEBREW@`) and basic family tree structure.
+A clean example GEDCOM file is provided as `examples/example.ged` to demonstrate the supported Hebrew date format (`@#DHEBREW@`) and basic family tree structure.
 
 ---
 
@@ -84,7 +84,7 @@ python3 -m unittest discover tests
 
 ### קובץ דוגמה
 
-קובץ GEDCOM נקי לדוגמה (`example.ged`) זמין בריפו כדי להדגים את פורמט התאריכים העבריים הנתמך (`@#DHEBREW@`) ומבנה בסיסי של עץ משפחה.
+קובץ GEDCOM נקי לדוגמה (`examples/example.ged`) זמין בריפו כדי להדגים את פורמט התאריכים העבריים הנתמך (`@#DHEBREW@`) ומבנה בסיסי של עץ משפחה.
 
 ## License
 

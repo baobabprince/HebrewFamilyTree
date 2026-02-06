@@ -2,7 +2,7 @@ from datetime import timedelta
 import json
 import requests
 import logging
-from constants import HEBCAL_API_BASE_URL, HEBCAL_FULL_MONTH_NAMES_TO_NUM, HEBREW_DAY_TO_NUM, HEBREW_MONTH_NAMES_TO_NUM
+from .constants import HEBCAL_API_BASE_URL, HEBCAL_FULL_MONTH_NAMES_TO_NUM, HEBREW_DAY_TO_NUM, HEBREW_MONTH_NAMES_TO_NUM
 
 # Mapping from Hebrew month number (as used internally) to English name (for Hebcal API)
 HEBREW_MONTH_NUM_TO_ENGLISH_NAME = {
