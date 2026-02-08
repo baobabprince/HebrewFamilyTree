@@ -7,6 +7,7 @@ geocoded_tree.ged
 app.log
 output.log
 test.ged
+.bashrc
 
 # Ignore Python cache files
 __pycache__/
