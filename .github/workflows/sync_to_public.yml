@@ -1,3 +1,5 @@
+name: Sync Private to Public Repository
+
 on:
   push:
     branches:
