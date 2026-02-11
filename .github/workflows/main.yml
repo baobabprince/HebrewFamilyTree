@@ -41,7 +41,11 @@ jobs:
           python-version: '3.12'
 
       - name: Install Python dependencies
-        run: pip install google-api-python-client google-auth-httplib2 google-auth-oauthlib google-auth python-gedcom requests networkx
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run tests
+        run: python3 -m unittest discover family_tree_notifier/tests
 
       - name: Install GitHub CLI
         run: sudo apt-get install gh -y

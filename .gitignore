@@ -7,8 +7,25 @@ geocoded_tree.ged
 app.log
 output.log
 test.ged
+token.json
 .bashrc
 
 # Ignore Python cache files
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.venv/
+.env
+.tox/
+.coverage
+.cache
+nosetests.xml
+coverage.xml
+*,cover
+.hypothesis/
