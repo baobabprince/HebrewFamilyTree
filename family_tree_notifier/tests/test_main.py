@@ -1,7 +1,7 @@
 import unittest
 from datetime import date
 from unittest.mock import Mock
-from family_tree_notifier.main import build_issue_body
+from family_tree_notifier.issue_generator import build_issue_body
 from family_tree_notifier.localization import get_translation
 
 class TestMain(unittest.TestCase):

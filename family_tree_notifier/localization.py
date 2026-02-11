@@ -8,7 +8,7 @@ TRANSLATIONS = {
         "mother_of": "אמא של",
         "son_of": "בן של",
         "daughter_of": "בת של",
-        "relative": "relative",
+        "relative": "קרוב משפחה",
         "upcoming_hebrew_dates": "תאריכים עבריים קרובים",
         "deceased_birthday_age_details_male": " (נפטר בגיל {age_at_death}, {years_since_birth} שנים מאז לידתו)",
         "deceased_birthday_age_details_female": " (נפטרה בגיל {age_at_death}, {years_since_birth} שנים מאז לידתה)",
