@@ -48,6 +48,12 @@ def main():
     args = parser.parse_args()
     lang = args.lang
 
+    person_id = os.getenv("PERSONID")
+    try:
+        distance_threshold = int(os.getenv("DISTANCE_THRESHOLD", DISTANCE_THRESHOLD))
+    except (ValueError, TypeError):
+        distance_threshold = DISTANCE_THRESHOLD
+
     # ------------------------------------------------------------------ logging
     logging.basicConfig(
         level=logging.DEBUG,
@@ -69,8 +75,6 @@ def main():
         logging.debug(f.read())
 
     logging.info("Step 3: Processing GEDCOM …")
-    person_id = os.environ.get('PERSONID')
-    distance_threshold = os.environ.get('DISTANCE_THRESHOLD')
     processed_rows, individual_details, family_details = process_gedcom_file(FIXED_GEDCOM_FILE, OUTPUT_CSV_FILE)
     logging.debug(f"Processed rows from GEDCOM: {processed_rows}")
 
@@ -86,11 +90,6 @@ def main():
     gedcom_parser = Parser()
     gedcom_parser.parse_file(FIXED_GEDCOM_FILE)
     G, id2name = build_graph(FIXED_GEDCOM_FILE)
-    PERSONID = os.getenv("PERSONID")
-    try:
-        distance_threshold = int(os.getenv("DISTANCE_THRESHOLD", DISTANCE_THRESHOLD))
-    except (ValueError, TypeError):
-        distance_threshold = DISTANCE_THRESHOLD
 
     enriched = []
     for item in relevant_upcoming_dates:
@@ -99,13 +98,13 @@ def main():
         dist = 999
         path = []
 
-        if PERSONID and gedcom_id:
+        if person_id and gedcom_id:
             # Handle marriage events with two IDs
             if "," in gedcom_id:
                 husband_id, wife_id = gedcom_id.split(',')
 
-                dist1, path1 = distance_and_path(G, PERSONID, husband_id)
-                dist2, path2 = distance_and_path(G, PERSONID, wife_id)
+                dist1, path1 = distance_and_path(G, person_id, husband_id)
+                dist2, path2 = distance_and_path(G, person_id, wife_id)
 
                 # Choose the shorter path
                 if dist1 is not None and (dist2 is None or dist1 <= dist2):
@@ -115,7 +114,7 @@ def main():
 
             # Handle individual events
             else:
-                dist_single, path_single = distance_and_path(G, PERSONID, gedcom_id)
+                dist_single, path_single = distance_and_path(G, person_id, gedcom_id)
                 if dist_single is not None:
                     dist, path = dist_single, path_single
 

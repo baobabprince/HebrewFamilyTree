@@ -389,15 +389,3 @@ def process_gedcom_file(file_path, output_csv_file):
     logger.info(f"Data successfully written to {output_csv_file}")
     logger.debug(f"Dates list before returning: {dates}")
     return csv_data_rows, individual_details, family_details
-
-def convert_keys_to_strings(some_dict):
-    """
-    Converts the keys of a dictionary to strings.
-
-    Args:
-        some_dict (dict): The dictionary to process.
-
-    Returns:
-        dict: A new dictionary with all keys converted to strings.
-    """
-    return {str(k): v for k, v in some_dict.items()}

@@ -46,36 +46,84 @@ The script is designed to be run automatically via GitHub Actions. You can also 
 2. בחרו את ה-workflow בשם **"Check Google Drive GEDCOM File for Updates and Process"**.
 3. לחצו על **"Run workflow"** וספקו את ה-`person_id` (מזהה ה-GEDCOM של האדם המרכזי) ואת `distance_threshold` (אופציונלי).
 
+## Development / פיתוח
+
+### English
+To run the script locally:
+1. **Create a virtual environment**:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+2. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. **Set environment variables**:
+   ```bash
+   export PERSONID="@I1@"
+   export DISTANCE_THRESHOLD=8
+   ```
+4. **Run the script**:
+   ```bash
+   python3 -m family_tree_notifier.main --lang en
+   ```
+
+### עברית
+להרצת הסקריפט באופן מקומי:
+1. **צרו סביבה וירטואלית**:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+2. **התקינו תלויות**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. **הגדירו משתני סביבה**:
+   ```bash
+   export PERSONID="@I1@"
+   export DISTANCE_THRESHOLD=8
+   ```
+4. **הריצו את הסקריפט**:
+   ```bash
+   python3 -m family_tree_notifier.main --lang he
+   ```
+
 ## Architecture Overview / סקירת ארכיטקטורה
 
 ### English
-1. **Download**: GEDCOM from Google Drive.
-2. **Clean & Parse**: Normalize GEDCOM and extract events.
-3. **Date Filtering**: Fetch upcoming Hebrew dates from Hebcal API.
-4. **Graph Construction**: Build family tree graph using `networkx`.
-5. **Distance Calculation**: Compute genealogical distance from `PERSONID`.
-6. **Issue Generation**: Create Markdown for GitHub issue.
+The application follows a modular architecture:
+- `main.py`: Orchestrator of the workflow.
+- `google_drive_utils.py`: Google Drive API interactions.
+- `gedcom_utils.py`: Cleaning and parsing of GEDCOM files.
+- `gedcom_graph.py`: Family tree graph and distance calculations.
+- `hebcal_api.py`: Hebrew date conversions and Parasha info.
+- `localization.py`: Multi-language support (HE/EN).
+- `issue_generator.py`: Formatting the GitHub issue.
 
 ### עברית
-1. **הורדה**: הורדת קובץ ה-GEDCOM מ-Google Drive.
-2. **ניקוי ופענוח**: נירמול הקובץ וחילוץ אירועים.
-3. **סינון תאריכים**: קבלת תאריכים עבריים קרובים מ-Hebcal API.
-4. **בניית גרף**: בניית עץ משפחה כגרף באמצעות `networkx`.
-5. **חישוב מרחק**: חישוב קרבה משפחתית מ-`PERSONID`.
-6. **יצירת Issue**: יצירת תוכן בפורמט Markdown עבור ה-Issue ב-GitHub.
+האפליקציה בנויה בצורה מודולרית:
+- `main.py`: המנצח על זרימת העבודה.
+- `google_drive_utils.py`: אינטראקציה עם Google Drive API.
+- `gedcom_utils.py`: ניקוי ופענוח קובצי GEDCOM.
+- `gedcom_graph.py`: בניית גרף עץ משפחה וחישוב מרחקים.
+- `hebcal_api.py`: המרת תאריכים עבריים ומידע על פרשת השבוע.
+- `localization.py`: תמיכה בריבוי שפות (עברית/אנגלית).
+- `issue_generator.py`: עיצוב ה-GitHub Issue.
 
 ## Testing / בדיקות
 
 ### English
-To run the project tests, use the following command:
+To run the project tests, use the following command from the root:
 ```bash
-python3 -m unittest discover family_tree_notifier/tests
+python3 -m unittest discover tests
 ```
 
 ### עברית
-כדי להריץ את הבדיקות של הפרויקט, השתמשו בפקודה הבאה:
+כדי להריץ את הבדיקות של הפרויקט מהתיקייה הראשית, השתמשו בפקודה הבאה:
 ```bash
-python3 -m unittest discover family_tree_notifier/tests
+python3 -m unittest discover tests
 ```
 
 ## Example File / קובץ דוגמה
