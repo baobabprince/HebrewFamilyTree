@@ -1,0 +1,23 @@
+# הגדרות עבור סקריפט תזכורות עץ משפחה
+# ניתן לשנות את הערכים כאן או להשתמש במשתני סביבה (Environment Variables) כדי לדרוס אותם
+
+# מזהה ה-GEDCOM של האדם שממנו מחושב המרחק (למשל @I1@)
+PERSON_ID=
+
+# שפה (he או en)
+LANGUAGE=he
+
+# סימון מיוחד לקרובים בקו ישיר (אבות/צאצאים) שיופיע ליד השם
+DIRECT_MARKER=⭐
+
+# --- הגדרות מרחק מקסימלי (MAX_DISTANCE) ---
+# אדם רחוק יותר מהמרחק הזה לא יופיע בתזכורת. (0 = ללא הגבלה)
+MAX_DISTANCE_DIRECT=0
+MAX_DISTANCE_BLOOD=10
+MAX_DISTANCE_MARRIAGE=5
+
+# --- הגדרות להצגת מסלול הקשר (SHOW_PATH_DISTANCE) ---
+# מסלול הקשר יוצג רק אם המרחק גדול מהערך המוגדר כאן.
+SHOW_PATH_DISTANCE_DIRECT=5
+SHOW_PATH_DISTANCE_BLOOD=3
+SHOW_PATH_DISTANCE_MARRIAGE=1

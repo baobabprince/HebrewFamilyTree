@@ -89,27 +89,25 @@ def get_relationship(p1_id, p2_id, parser: Parser, lang="he"):
 
     return get_translation(lang, "relative")
 
-def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold, person_id, parser, individual_details, family_details, lang="he"):
+def build_issue_body(enriched_list, id2name, today_gregorian, config, parser, individual_details, family_details, lang="he"):
     """
     Constructs the Markdown body for the GitHub issue.
 
     This function formats a list of upcoming events into a human-readable
     Markdown string. It includes emojis, age calculations, and the genealogical
-    path from the `PERSONID` if the distance exceeds the threshold.
+    path from the `PERSON_ID` if the distance exceeds the threshold.
 
     Args:
         enriched_list (list): A list of tuples, where each tuple contains event
-                              details: (distance, path, gregorian_date,
+                              details: (distance, path, category, gregorian_date,
                               heb_date_str, name, event_type).
         id2name (dict): A dictionary mapping GEDCOM pointers to display names.
         today_gregorian (date): The current date, for the issue header.
-        distance_threshold (int): The distance beyond which the genealogical path
-                                  should be displayed.
-        person_id (str): The GEDCOM pointer ID of the person from whom distances
-                         are calculated.
+        config (dict): Configuration dictionary.
         parser (Parser): The initialized GEDCOM parser instance.
         individual_details (dict): A dictionary with birth/death years for age calculation.
         family_details (dict): A dictionary with marriage years for anniversary calculation.
+        lang (str): Language for the issue.
 
     Returns:
         str: The formatted Markdown string for the GitHub issue body.
@@ -120,10 +118,14 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
         f"{(today_gregorian + timedelta(days=7)).strftime('%Y-%m-%d')})\n\n"
     )
 
-    # sort by date (closest first), then by distance
-    enriched_list.sort(key=lambda t: (t[2], t[0]))
+    person_id = config.get("PERSON_ID")
 
-    for dist, path, gregorian_date, original_date_str_parsed, name, event_type in enriched_list:
+    # sort by date (closest first), then by distance
+    # Tuple structure: (dist, path, category, gregorian_date, heb_date_str, name, event_type)
+    # Sort by: gregorian_date (index 3), then distance (index 0)
+    enriched_list.sort(key=lambda t: (t[3], t[0]))
+
+    for dist, path, category, gregorian_date, original_date_str_parsed, name, event_type in enriched_list:
         hebrew_weekday = get_translation(lang, gregorian_date.strftime('%A').lower())
         event_name = get_translation(lang, event_type.lower())
 
@@ -188,11 +190,24 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
                     years_married = gregorian_date.year - marriage_year
                     age_str = get_translation(lang, "anniversary_married", years_married=years_married)
 
+        # Add marker for direct relatives
+        display_name = name
+        if category == 'direct':
+            marker = config.get("DIRECT_MARKER", "")
+            if marker:
+                display_name = f"{marker} {name}"
+
         issue_body += get_translation(lang, "event_header", emoji=emoji, hebrew_weekday=hebrew_weekday, original_date_str_parsed=original_date_str_parsed)
         issue_body += get_translation(lang, "event_type_label", event_name=event_name)
-        issue_body += get_translation(lang, "person_family_label", name=name, age_str=age_str)
+        issue_body += get_translation(lang, "person_family_label", name=display_name, age_str=age_str)
 
-        if person_id and dist is not None and dist > distance_threshold and path:
+        show_path_threshold_key = f"SHOW_PATH_DISTANCE_{category.upper()}"
+        try:
+            show_path_threshold = int(config.get(show_path_threshold_key, 0))
+        except (ValueError, TypeError):
+            show_path_threshold = 0
+
+        if person_id and dist is not None and dist > show_path_threshold and path:
             path_parts = []
             reversed_path = list(reversed(path))
             for i in range(len(reversed_path) - 1):

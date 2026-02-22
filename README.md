@@ -32,19 +32,39 @@ This project processes a GEDCOM file to find upcoming Hebrew-date based events (
    - הגדירו את תוכן קובץ ה-JSON כ-GitHub Secret בשם `GOOGLE_CREDENTIALS_JSON`.
    - הגדירו את מזהה הקובץ של ה-GEDCOM שלכם מ-Google Drive כ-Secret בשם `GOOGLE_DRIVE_FILE_ID`.
 
+## Configuration / הגדרות
+
+### English
+The script behavior can be customized using a `config.txt` file in the root directory. You can also override these settings using environment variables.
+Supported settings include:
+- `PERSON_ID`: The GEDCOM ID of the root person.
+- `LANGUAGE`: Output language (`he` or `en`).
+- `DIRECT_MARKER`: Special marker for direct ancestors/descendants.
+- `MAX_DISTANCE_*`: Filtering events based on genealogical distance.
+- `SHOW_PATH_DISTANCE_*`: Thresholds for displaying the genealogical path.
+
+### עברית
+ניתן להתאים את התנהגות הסקריפט באמצעות קובץ `config.txt` בתיקייה הראשית. ניתן גם לדרוס הגדרות אלו באמצעות משתני סביבה.
+ההגדרות הנתמכות כוללות:
+- `PERSON_ID`: מזהה ה-GEDCOM של האדם המרכזי.
+- `LANGUAGE`: שפת הפלט (`he` או `en`).
+- `DIRECT_MARKER`: סימון מיוחד לאבות/צאצאים ישירים.
+- `MAX_DISTANCE_*`: סינון אירועים לפי מרחק גנאלוגי.
+- `SHOW_PATH_DISTANCE_*`: סף להצגת מסלול הקשר המשפחתי.
+
 ## Usage / שימוש
 
 ### English
 The script is designed to be run automatically via GitHub Actions. You can also trigger it manually:
 1. Go to the **Actions** tab in your GitHub repository.
 2. Select the **"Check Google Drive GEDCOM File for Updates and Process"** workflow.
-3. Click **"Run workflow"** and provide the `person_id` (the central person's GEDCOM ID) and an optional `distance_threshold`.
+3. Click **"Run workflow"** and provide optional overrides for `person_id` or `distance_threshold`.
 
 ### עברית
 הסקריפט מיועד לרוץ באופן אוטומטי דרך GitHub Actions. ניתן להפעיל אותו גם ידנית:
 1. עברו ללשונית **Actions** במאגר ה-GitHub שלכם.
 2. בחרו את ה-workflow בשם **"Check Google Drive GEDCOM File for Updates and Process"**.
-3. לחצו על **"Run workflow"** וספקו את ה-`person_id` (מזהה ה-GEDCOM של האדם המרכזי) ואת `distance_threshold` (אופציונלי).
+3. לחצו על **"Run workflow"** וספקו (אופציונלית) ערכים לדריסת `person_id` או `distance_threshold`.
 
 ## Architecture Overview / סקירת ארכיטקטורה
 
