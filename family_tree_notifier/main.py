@@ -71,7 +71,7 @@ def main():
     logging.info("Step 3: Processing GEDCOM …")
     person_id = os.environ.get('PERSONID')
     distance_threshold = os.environ.get('DISTANCE_THRESHOLD')
-    processed_rows, individual_details, family_details = process_gedcom_file(FIXED_GEDCOM_FILE, OUTPUT_CSV_FILE)
+    processed_rows, individual_details, family_details = process_gedcom_file(FIXED_GEDCOM_FILE, OUTPUT_CSV_FILE, lang=lang)
     logging.debug(f"Processed rows from GEDCOM: {processed_rows}")
 
     if not processed_rows:
@@ -85,7 +85,7 @@ def main():
 
     gedcom_parser = Parser()
     gedcom_parser.parse_file(FIXED_GEDCOM_FILE)
-    G, id2name = build_graph(FIXED_GEDCOM_FILE)
+    G, id2name = build_graph(FIXED_GEDCOM_FILE, lang=lang)
     PERSONID = os.getenv("PERSONID")
     try:
         distance_threshold = int(os.getenv("DISTANCE_THRESHOLD", DISTANCE_THRESHOLD))

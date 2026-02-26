@@ -3,8 +3,9 @@ Build a directed graph from the GEDCOM and compute distances / paths.
 """
 import networkx as nx
 from gedcom.parser import Parser
+from .gedcom_utils import get_name_from_individual
 
-def build_graph(file_path):
+def build_graph(file_path, lang="he"):
     """
     Constructs an undirected NetworkX graph from a GEDCOM file.
 
@@ -33,11 +34,7 @@ def build_graph(file_path):
     for elem in root:
         if elem.get_tag() == "INDI":
             pid = elem.get_pointer()
-            name = "Unknown"
-            for ch in elem.get_child_elements():
-                if ch.get_tag() == "NAME":
-                    name = ch.get_value().replace("/", "").strip()
-                    break
+            name = get_name_from_individual(elem, lang=lang)
             indi[pid] = name
             G.add_node(pid, name=name)
 
