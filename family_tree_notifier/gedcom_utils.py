@@ -95,20 +95,71 @@ def fix_gedcom_format(input_file, output_file):
         logger.error(f"Error writing output file {output_file}: {e}")
 
 
-def get_name_from_individual(element):
+def _extract_surname(name_element):
+    """
+    Helper to extract the surname from a GEDCOM NAME element.
+    It first checks for a SURN child element, then falls back to the slash-delimited value.
+    """
+    for child in name_element.get_child_elements():
+        if child.get_tag() == "SURN":
+            return child.get_value().strip()
+
+    # Fallback to extracting from the slash-delimited value
+    name_value = name_element.get_value()
+    if "/" in name_value:
+        try:
+            return name_value.split("/")[1].strip()
+        except IndexError:
+            pass
+    return ""
+
+def get_name_from_individual(element, lang="he"):
     """
     Extracts the full name from a GEDCOM individual (`INDI`) element.
+    If it's a woman and she has a maiden name different from her current surname,
+    it returns "Current Name (née Maiden Name)".
 
     Args:
         element (Element): A GEDCOM element representing an individual.
+        lang (str): The language for the "nee" label.
 
     Returns:
         str: The formatted name of the individual, or "Unknown Name" if not found.
     """
+    primary_name = "Unknown Name"
+    primary_surname = ""
+
+    # Find primary name (the first NAME tag)
     for child in element.get_child_elements():
         if child.get_tag() == "NAME":
-            return child.get_value().replace("/", "").strip()
-    return "Unknown Name"
+            primary_name = child.get_value().replace("/", "").strip()
+            primary_surname = _extract_surname(child)
+            break
+
+    if primary_name == "Unknown Name":
+        return primary_name
+
+    # Check for maiden name if individual is female
+    gender = element.get_gender()
+    if gender and gender.upper() == "F":
+        maiden_surname = ""
+        for child in element.get_child_elements():
+            if child.get_tag() == "NAME":
+                is_birth_name = False
+                for grandchild in child.get_child_elements():
+                    if grandchild.get_tag() == "TYPE" and grandchild.get_value().lower() in ["birth", "maiden"]:
+                        is_birth_name = True
+                        break
+
+                if is_birth_name:
+                    maiden_surname = _extract_surname(child)
+                    break
+
+        if maiden_surname and maiden_surname != primary_surname:
+            nee_label = get_translation(lang, "nee")
+            return f"{primary_name} ({nee_label} {maiden_surname})"
+
+    return primary_name
 
 def process_individual_events(element, name, dates, individual_details):
     """
@@ -286,7 +337,7 @@ def process_event(event_element, name, dates, event_type=None, individual_id=Non
     return gregorian_year
 
 
-def process_gedcom_file(file_path, output_csv_file):
+def process_gedcom_file(file_path, output_csv_file, lang="he"):
     """
     Orchestrates the parsing of a GEDCOM file to extract Hebrew date events.
 
@@ -299,6 +350,7 @@ def process_gedcom_file(file_path, output_csv_file):
     Args:
         file_path (str): The path to the cleaned GEDCOM file.
         output_csv_file (str): The path to write the output CSV file.
+        lang (str): The language for name formatting.
 
     Returns:
         tuple: A tuple containing:
@@ -324,7 +376,7 @@ def process_gedcom_file(file_path, output_csv_file):
     for element in root_child_elements:
         if element.get_tag() == "INDI":
             individual_id = element.get_pointer()
-            name = get_name_from_individual(element)
+            name = get_name_from_individual(element, lang=lang)
             individuals[individual_id] = name
             gender = element.get_gender()
             individual_details[name] = {"birth_year": None, "death_year": None, "gender": gender}
