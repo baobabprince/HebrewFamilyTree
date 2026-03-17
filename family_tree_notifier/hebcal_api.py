@@ -141,11 +141,11 @@ def find_relevant_hebrew_dates(processed_gedcom_rows, target_hebrew_dates_map, h
 
     return relevant_dates
 
-def get_parasha_for_week(start_date, lang="he"):
+def get_parasha_for_week(start_date, lang="he", num_days=7):
     """
     Finds the Parashat Hashavua for the upcoming week using the /hebcal endpoint.
     """
-    end_date = start_date + timedelta(days=7)
+    end_date = start_date + timedelta(days=num_days)
     logging.debug(f"Searching for Parasha between {start_date} and {end_date}")
 
     url = "https://www.hebcal.com/hebcal"
