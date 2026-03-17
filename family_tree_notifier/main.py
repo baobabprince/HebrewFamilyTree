@@ -81,7 +81,7 @@ def main():
         return
 
     today_gregorian = date.today()
-    hebrew_week_dates_map = get_hebrew_date_range_api(today_gregorian, num_days)
+    hebrew_dates_map = get_hebrew_date_range_api(today_gregorian, num_days)
 
     relevant_upcoming_dates = find_relevant_hebrew_dates(processed_rows, hebrew_week_dates_map, has_id_column=True)
 
