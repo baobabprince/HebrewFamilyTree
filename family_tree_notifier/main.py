@@ -15,7 +15,7 @@ from datetime import date, timedelta
 
 from .constants import (
     GOOGLE_DRIVE_FILE_ID, INPUT_GEDCOM_FILE, FIXED_GEDCOM_FILE, OUTPUT_CSV_FILE,
-    DISTANCE_THRESHOLD
+    DISTANCE_THRESHOLD, UPCOMING_DAYS
 )
 from .google_drive_utils import download_gedcom_from_drive
 from .gedcom_utils import fix_gedcom_format, process_gedcom_file
@@ -45,8 +45,10 @@ def main():
     """
     parser = argparse.ArgumentParser(description="Generate GitHub issues for upcoming Hebrew calendar events.")
     parser.add_argument("--lang", default="he", choices=["he", "en"], help="Language for the issue (he for Hebrew, en for English).")
+    parser.add_argument("--days", type=int, default=UPCOMING_DAYS, help="Number of days to look ahead for events.")
     args = parser.parse_args()
     lang = args.lang
+    num_days = args.days
 
     # ------------------------------------------------------------------ logging
     logging.basicConfig(
@@ -79,7 +81,7 @@ def main():
         return
 
     today_gregorian = date.today()
-    hebrew_week_dates_map = get_hebrew_date_range_api(today_gregorian, 7)
+    hebrew_dates_map = get_hebrew_date_range_api(today_gregorian, num_days)
 
     relevant_upcoming_dates = find_relevant_hebrew_dates(processed_rows, hebrew_week_dates_map, has_id_column=True)
 
@@ -121,7 +123,7 @@ def main():
 
         enriched.append((dist, path, gregorian_date, original_date_str_parsed, name, event_type))
 
-    parasha = get_parasha_for_week(today_gregorian, lang)
+    parasha = get_parasha_for_week(today_gregorian, lang, num_days)
     issue_title_base = get_translation(lang, "issue_title")
     issue_title = f"{issue_title_base} {parasha}" if parasha else f"{issue_title_base}: {today_gregorian.strftime('%Y-%m-%d')}"
     issue_body = build_issue_body(enriched, id2name, today_gregorian, distance_threshold, person_id, gedcom_parser, individual_details, family_details, lang)

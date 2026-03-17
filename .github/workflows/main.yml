@@ -15,6 +15,11 @@ on:
         required: false
         type: number
         default: "8"
+      days:
+        description: 'Number of days to look ahead for events (default: 8)'
+        required: false
+        type: number
+        default: "8"
       lang:
         description: 'Language for the output (en/he)'
         required: false
@@ -55,7 +60,7 @@ jobs:
 
       - name: Run main processing script
         id: process_gedcom
-        run: python -m family_tree_notifier.main --lang ${{ github.event.inputs.lang || 'he' }}
+        run: python -m family_tree_notifier.main --lang ${{ github.event.inputs.lang || 'he' }} --days ${{ github.event.inputs.days || 8 }}
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
           PERSONID: ${{ github.event.inputs.person_id || secrets.PERSONID }}
