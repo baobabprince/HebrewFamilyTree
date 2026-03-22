@@ -169,17 +169,18 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
                     key = "yahrzeit_years_only_female" if gender == "F" else "yahrzeit_years_only_male"
                     age_str = get_translation(lang, key, years_since_death=years_since_death)
         elif event_type == "MARR":
-            emoji = "💑"
             family_info = family_details.get(name, {})
+            is_divorced = family_info.get("is_divorced", False) or family_info.get("divorce_year") is not None
+            if is_divorced:
+                continue
+
+            emoji = "💑"
             marriage_year = family_info.get("marriage_year")
-            divorce_year = family_info.get("divorce_year")
             husband_death_year = family_info.get("husband_death_year")
             wife_death_year = family_info.get("wife_death_year")
 
             if marriage_year:
-                if divorce_year:
-                    age_str = get_translation(lang, "anniversary_divorced", marriage_year=marriage_year)
-                elif husband_death_year or wife_death_year:
+                if husband_death_year or wife_death_year:
                     first_death_year = min(filter(None, [husband_death_year, wife_death_year]))
                     if first_death_year >= marriage_year:
                         marriage_duration = first_death_year - marriage_year
