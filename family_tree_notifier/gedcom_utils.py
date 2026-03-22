@@ -226,10 +226,13 @@ def process_family_events(element, individuals, dates, family_details):
             event_type_str = child.get_tag()
             gregorian_year = process_event(child, couple_name, dates, event_type=event_type_str, husband_id=husband_id, wife_id=wife_id)
 
-            if gregorian_year:
-                if couple_name not in family_details:
-                    family_details[couple_name] = {}
+            if couple_name not in family_details:
+                family_details[couple_name] = {}
 
+            if child.get_tag() in ["DIV", "ANUL"]:
+                family_details[couple_name]['is_divorced'] = True
+
+            if gregorian_year:
                 if child.get_tag() == "MARR":
                     family_details[couple_name]['marriage_year'] = gregorian_year
                 elif child.get_tag() == "DIV":

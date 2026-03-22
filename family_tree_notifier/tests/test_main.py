@@ -148,9 +148,9 @@ class TestMain(unittest.TestCase):
         # Generate the issue body
         issue_body = build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold, person_id, parser, individual_details, family_details, lang="he")
 
-        # Assertions
-        self.assertIn("💑", issue_body)
-        self.assertIn("(נישאו בשנת 1994)", issue_body)
+        # Assertions: Anniversary should be skipped for divorced couples
+        self.assertNotIn("💑", issue_body)
+        self.assertNotIn("John Doe & Jane Doe", issue_body)
 
     def test_build_issue_body_english_translation(self):
         # Mock data for a living person's birthday in English
