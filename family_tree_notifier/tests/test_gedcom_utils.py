@@ -118,7 +118,7 @@ class TestGedcomUtils(unittest.TestCase):
         mock_indi_element.get_child_elements.return_value = [mock_name_primary, mock_name_birth]
         mock_indi_element.get_gender.return_value = "F"
 
-        self.assertEqual(get_name_from_individual(mock_indi_element, lang="he"), "Sarah Hadar (לבית Imenu)")
+        self.assertEqual(get_name_from_individual(mock_indi_element, lang="he"), "Sarah Hadar לבית Imenu")
 
     def test_get_name_from_individual_married_woman_en(self):
         # Similar setup but with lang="en"
@@ -149,7 +149,7 @@ class TestGedcomUtils(unittest.TestCase):
         mock_indi_element.get_child_elements.return_value = [mock_name_primary, mock_name_birth]
         mock_indi_element.get_gender.return_value = "F"
 
-        self.assertEqual(get_name_from_individual(mock_indi_element, lang="en"), "Sarah Hadar (née Imenu)")
+        self.assertEqual(get_name_from_individual(mock_indi_element, lang="en"), "Sarah Hadar née Imenu")
 
     def test_get_name_from_individual_same_surname(self):
         # Setup mock for a woman whose maiden name is the same as her current name
@@ -181,6 +181,62 @@ class TestGedcomUtils(unittest.TestCase):
         mock_indi_element.get_gender.return_value = "F"
 
         self.assertEqual(get_name_from_individual(mock_indi_element), "Sarah Imenu")
+
+    def test_get_name_from_individual_birth_name_first(self):
+        # Setup mock where birth name is first, then married name
+        mock_name_birth = MagicMock()
+        mock_name_birth.get_tag.return_value = "NAME"
+        mock_name_birth.get_value.return_value = "Haya /Benzamra/"
+        mock_type_birth = MagicMock()
+        mock_type_birth.get_tag.return_value = "TYPE"
+        mock_type_birth.get_value.return_value = "birth"
+        mock_surn_birth = MagicMock()
+        mock_surn_birth.get_tag.return_value = "SURN"
+        mock_surn_birth.get_value.return_value = "Benzamra"
+        mock_name_birth.get_child_elements.return_value = [mock_type_birth, mock_surn_birth]
+
+        mock_name_married = MagicMock()
+        mock_name_married.get_tag.return_value = "NAME"
+        mock_name_married.get_value.return_value = "Haya /Hadar/"
+        mock_surn_married = MagicMock()
+        mock_surn_married.get_tag.return_value = "SURN"
+        mock_surn_married.get_value.return_value = "Hadar"
+        mock_name_married.get_child_elements.return_value = [mock_surn_married]
+
+        mock_indi_element = MagicMock()
+        mock_indi_element.get_child_elements.return_value = [mock_name_birth, mock_name_married]
+        mock_indi_element.get_gender.return_value = "F"
+
+        self.assertEqual(get_name_from_individual(mock_indi_element, lang="he"), "Haya Hadar לבית Benzamra")
+
+    def test_get_name_from_individual_short_version(self):
+        # Setup mock where birth name is first, then married name
+        mock_name_birth = MagicMock()
+        mock_name_birth.get_tag.return_value = "NAME"
+        mock_name_birth.get_value.return_value = "Haya /Benzamra/"
+        mock_type_birth = MagicMock()
+        mock_type_birth.get_tag.return_value = "TYPE"
+        mock_type_birth.get_value.return_value = "birth"
+        mock_surn_birth = MagicMock()
+        mock_surn_birth.get_tag.return_value = "SURN"
+        mock_surn_birth.get_value.return_value = "Benzamra"
+        mock_name_birth.get_child_elements.return_value = [mock_type_birth, mock_surn_birth]
+
+        mock_name_married = MagicMock()
+        mock_name_married.get_tag.return_value = "NAME"
+        mock_name_married.get_value.return_value = "Haya /Hadar/"
+        mock_surn_married = MagicMock()
+        mock_surn_married.get_tag.return_value = "SURN"
+        mock_surn_married.get_value.return_value = "Hadar"
+        mock_name_married.get_child_elements.return_value = [mock_surn_married]
+
+        mock_indi_element = MagicMock()
+        mock_indi_element.get_child_elements.return_value = [mock_name_birth, mock_name_married]
+        mock_indi_element.get_gender.return_value = "F"
+
+        # Test short version (no maiden name)
+        self.assertEqual(get_name_from_individual(mock_indi_element, lang="he", include_maiden=False), "Haya Hadar")
+
 
     # Test cases for fix_gedcom_format
     def test_fix_gedcom_format_valid_lines(self):

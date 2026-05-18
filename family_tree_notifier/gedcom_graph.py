@@ -34,7 +34,7 @@ def build_graph(file_path, lang="he"):
     for elem in root:
         if elem.get_tag() == "INDI":
             pid = elem.get_pointer()
-            name = get_name_from_individual(elem, lang=lang)
+            name = get_name_from_individual(elem, lang=lang, include_maiden=False)
             indi[pid] = name
             G.add_node(pid, name=name)
 

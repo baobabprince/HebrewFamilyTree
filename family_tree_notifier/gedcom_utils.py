@@ -113,53 +113,53 @@ def _extract_surname(name_element):
             pass
     return ""
 
-def get_name_from_individual(element, lang="he"):
+def get_name_from_individual(element, lang="he", include_maiden=True):
     """
     Extracts the full name from a GEDCOM individual (`INDI`) element.
     If it's a woman and she has a maiden name different from her current surname,
-    it returns "Current Name (née Maiden Name)".
+    it returns "Current Name née Maiden Name".
 
     Args:
         element (Element): A GEDCOM element representing an individual.
         lang (str): The language for the "nee" label.
+        include_maiden (bool): Whether to include the maiden name in the output.
 
     Returns:
         str: The formatted name of the individual, or "Unknown Name" if not found.
     """
-    primary_name = "Unknown Name"
-    primary_surname = ""
-
-    # Find primary name (the first NAME tag)
+    names = []
     for child in element.get_child_elements():
         if child.get_tag() == "NAME":
-            primary_name = child.get_value().replace("/", "").strip()
-            primary_surname = _extract_surname(child)
-            break
+            name_val = child.get_value().replace("/", "").strip()
+            surname = _extract_surname(child)
+            is_maiden = False
+            for grandchild in child.get_child_elements():
+                if grandchild.get_tag() == "TYPE" and grandchild.get_value().lower() in ["birth", "maiden"]:
+                    is_maiden = True
+                    break
+            names.append({"name": name_val, "surname": surname, "is_maiden": is_maiden})
 
-    if primary_name == "Unknown Name":
-        return primary_name
+    if not names:
+        return "Unknown Name"
 
-    # Check for maiden name if individual is female
+    # Primary name: first one that's NOT marked as birth/maiden.
+    # Fallback to the first name available.
+    primary = next((n for n in names if not n["is_maiden"]), names[0])
+
+    if not include_maiden:
+        return primary["name"]
+
+    # Only check for maiden name if individual is female
     gender = element.get_gender()
     if gender and gender.upper() == "F":
-        maiden_surname = ""
-        for child in element.get_child_elements():
-            if child.get_tag() == "NAME":
-                is_birth_name = False
-                for grandchild in child.get_child_elements():
-                    if grandchild.get_tag() == "TYPE" and grandchild.get_value().lower() in ["birth", "maiden"]:
-                        is_birth_name = True
-                        break
+        # Maiden name: first one that IS marked as birth/maiden.
+        maiden = next((n for n in names if n["is_maiden"]), None)
 
-                if is_birth_name:
-                    maiden_surname = _extract_surname(child)
-                    break
-
-        if maiden_surname and maiden_surname != primary_surname:
+        if maiden and maiden["surname"] and maiden["surname"] != primary["surname"]:
             nee_label = get_translation(lang, "nee")
-            return f"{primary_name} ({nee_label} {maiden_surname})"
+            return f"{primary['name']} {nee_label} {maiden['surname']}"
 
-    return primary_name
+    return primary["name"]
 
 def process_individual_events(element, name, dates, individual_details):
     """
