@@ -30,11 +30,14 @@ def build_graph(file_path, lang="he"):
     gedcom_parser.parse_file(file_path)
     root = gedcom_parser.get_root_child_elements()
 
+    from .gedcom_utils import get_all_individuals_names
+    id2names = get_all_individuals_names(root, lang=lang)
+
     indi = {}
     for elem in root:
         if elem.get_tag() == "INDI":
             pid = elem.get_pointer()
-            name = get_name_from_individual(elem, lang=lang, include_maiden=False)
+            name = id2names.get(pid, {}).get("short", "Unknown Name")
             indi[pid] = name
             G.add_node(pid, name=name)
 

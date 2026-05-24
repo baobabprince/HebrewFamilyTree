@@ -10,6 +10,7 @@ from family_tree_notifier.gedcom_utils import (
     get_hebrew_day_string,
     fix_gedcom_format,
     get_name_from_individual,
+    get_all_individuals_names,
     process_event,
     process_individual_events,
     process_family_events,
@@ -209,33 +210,95 @@ class TestGedcomUtils(unittest.TestCase):
 
         self.assertEqual(get_name_from_individual(mock_indi_element, lang="he"), "Haya Hadar לבית Benzamra")
 
-    def test_get_name_from_individual_short_version(self):
-        # Setup mock where birth name is first, then married name
-        mock_name_birth = MagicMock()
-        mock_name_birth.get_tag.return_value = "NAME"
-        mock_name_birth.get_value.return_value = "Haya /Benzamra/"
-        mock_type_birth = MagicMock()
-        mock_type_birth.get_tag.return_value = "TYPE"
-        mock_type_birth.get_value.return_value = "birth"
-        mock_surn_birth = MagicMock()
-        mock_surn_birth.get_tag.return_value = "SURN"
-        mock_surn_birth.get_value.return_value = "Benzamra"
-        mock_name_birth.get_child_elements.return_value = [mock_type_birth, mock_surn_birth]
+    def test_get_all_individuals_names_inference(self):
+        # Setup mock for father
+        mock_father = MagicMock()
+        mock_father.get_tag.return_value = "INDI"
+        mock_father.get_pointer.return_value = "@I1@"
+        mock_father.get_gender.return_value = "M"
+        mock_name_f = MagicMock()
+        mock_name_f.get_tag.return_value = "NAME"
+        mock_name_f.get_value.return_value = "Emanuel /Benzamra/"
+        mock_surn_f = MagicMock()
+        mock_surn_f.get_tag.return_value = "SURN"
+        mock_surn_f.get_value.return_value = "Benzamra"
+        mock_name_f.get_child_elements.return_value = [mock_surn_f]
+        mock_father.get_child_elements.return_value = [mock_name_f]
 
-        mock_name_married = MagicMock()
-        mock_name_married.get_tag.return_value = "NAME"
-        mock_name_married.get_value.return_value = "Haya /Hadar/"
-        mock_surn_married = MagicMock()
-        mock_surn_married.get_tag.return_value = "SURN"
-        mock_surn_married.get_value.return_value = "Hadar"
-        mock_name_married.get_child_elements.return_value = [mock_surn_married]
+        # Setup mock for daughter
+        mock_daughter = MagicMock()
+        mock_daughter.get_tag.return_value = "INDI"
+        mock_daughter.get_pointer.return_value = "@I2@"
+        mock_daughter.get_gender.return_value = "F"
+        mock_name_d = MagicMock()
+        mock_name_d.get_tag.return_value = "NAME"
+        mock_name_d.get_value.return_value = "Haya /Hadar/"
+        mock_surn_d = MagicMock()
+        mock_surn_d.get_tag.return_value = "SURN"
+        mock_surn_d.get_value.return_value = "Hadar"
+        mock_name_d.get_child_elements.return_value = [mock_surn_d]
+        mock_daughter.get_child_elements.return_value = [mock_name_d]
 
-        mock_indi_element = MagicMock()
-        mock_indi_element.get_child_elements.return_value = [mock_name_birth, mock_name_married]
-        mock_indi_element.get_gender.return_value = "F"
+        # Setup mock for family
+        mock_fam = MagicMock()
+        mock_fam.get_tag.return_value = "FAM"
+        mock_husb = MagicMock()
+        mock_husb.get_tag.return_value = "HUSB"
+        mock_husb.get_value.return_value = "@I1@"
+        mock_chil = MagicMock()
+        mock_chil.get_tag.return_value = "CHIL"
+        mock_chil.get_value.return_value = "@I2@"
+        mock_fam.get_child_elements.return_value = [mock_husb, mock_chil]
 
-        # Test short version (no maiden name)
-        self.assertEqual(get_name_from_individual(mock_indi_element, lang="he", include_maiden=False), "Haya Hadar")
+        root = [mock_father, mock_daughter, mock_fam]
+        names = get_all_individuals_names(root, lang="he")
+
+        # Haya Hadar should have inferred maiden name Benzamra from father
+        self.assertEqual(names["@I2@"]["display"], "Haya Hadar לבית Benzamra")
+        self.assertEqual(names["@I2@"]["short"], "Haya Hadar")
+
+    def test_get_all_individuals_names_husband_inference(self):
+        # Setup mock for husband
+        mock_husb = MagicMock()
+        mock_husb.get_tag.return_value = "INDI"
+        mock_husb.get_pointer.return_value = "@I1@"
+        mock_husb.get_gender.return_value = "M"
+        mock_name_h = MagicMock()
+        mock_name_h.get_tag.return_value = "NAME"
+        mock_name_h.get_value.return_value = "Yoram /Levi/"
+        mock_surn_h = MagicMock()
+        mock_surn_h.get_tag.return_value = "SURN"
+        mock_surn_h.get_value.return_value = "Levi"
+        mock_name_h.get_child_elements.return_value = [mock_surn_h]
+        mock_husb.get_child_elements.return_value = [mock_name_h]
+
+        # Setup mock for wife (no surname in tag)
+        mock_wife = MagicMock()
+        mock_wife.get_tag.return_value = "INDI"
+        mock_wife.get_pointer.return_value = "@I2@"
+        mock_wife.get_gender.return_value = "F"
+        mock_name_w = MagicMock()
+        mock_name_w.get_tag.return_value = "NAME"
+        mock_name_w.get_value.return_value = "Agnes Esther Hanna"
+        mock_name_w.get_child_elements.return_value = []
+        mock_wife.get_child_elements.return_value = [mock_name_w]
+
+        # Setup mock for family
+        mock_fam = MagicMock()
+        mock_fam.get_tag.return_value = "FAM"
+        mock_husb_tag = MagicMock()
+        mock_husb_tag.get_tag.return_value = "HUSB"
+        mock_husb_tag.get_value.return_value = "@I1@"
+        mock_wife_tag = MagicMock()
+        mock_wife_tag.get_tag.return_value = "WIFE"
+        mock_wife_tag.get_value.return_value = "@I2@"
+        mock_fam.get_child_elements.return_value = [mock_husb_tag, mock_wife_tag]
+
+        root = [mock_husb, mock_wife, mock_fam]
+        names = get_all_individuals_names(root, lang="he")
+
+        # Agnes should have inferred married name Levi from husband
+        self.assertEqual(names["@I2@"]["display"], "Agnes Esther Hanna Levi")
 
 
     # Test cases for fix_gedcom_format

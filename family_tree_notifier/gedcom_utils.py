@@ -116,16 +116,7 @@ def _extract_surname(name_element):
 def get_name_from_individual(element, lang="he", include_maiden=True):
     """
     Extracts the full name from a GEDCOM individual (`INDI`) element.
-    If it's a woman and she has a maiden name different from her current surname,
-    it returns "Current Name née Maiden Name".
-
-    Args:
-        element (Element): A GEDCOM element representing an individual.
-        lang (str): The language for the "nee" label.
-        include_maiden (bool): Whether to include the maiden name in the output.
-
-    Returns:
-        str: The formatted name of the individual, or "Unknown Name" if not found.
+    This version is a simple fallback. Use get_all_individuals_names for tree-aware name construction.
     """
     names = []
     for child in element.get_child_elements():
@@ -142,24 +133,127 @@ def get_name_from_individual(element, lang="he", include_maiden=True):
     if not names:
         return "Unknown Name"
 
-    # Primary name: first one that's NOT marked as birth/maiden.
-    # Fallback to the first name available.
     primary = next((n for n in names if not n["is_maiden"]), names[0])
 
     if not include_maiden:
         return primary["name"]
 
-    # Only check for maiden name if individual is female
     gender = element.get_gender()
     if gender and gender.upper() == "F":
-        # Maiden name: first one that IS marked as birth/maiden.
         maiden = next((n for n in names if n["is_maiden"]), None)
-
         if maiden and maiden["surname"] and maiden["surname"] != primary["surname"]:
             nee_label = get_translation(lang, "nee")
             return f"{primary['name']} {nee_label} {maiden['surname']}"
 
     return primary["name"]
+
+def get_all_individuals_names(root_elements, lang="he"):
+    """
+    Constructs a mapping of all individuals to their display and short names,
+    inferring married and maiden names from family context.
+    """
+    indis = {} # id -> data
+    for elem in root_elements:
+        if elem.get_tag() == "INDI":
+            pid = elem.get_pointer()
+            gender = elem.get_gender()
+
+            names = []
+            for child in elem.get_child_elements():
+                if child.get_tag() == "NAME":
+                    name_val = child.get_value().replace("/", "").strip()
+                    surname = _extract_surname(child)
+                    is_maiden = False
+                    for grandchild in child.get_child_elements():
+                        if grandchild.get_tag() == "TYPE" and grandchild.get_value().lower() in ["birth", "maiden"]:
+                            is_maiden = True
+                            break
+
+                    full_val = child.get_value()
+                    given = full_val.split("/")[0].strip() if "/" in full_val else full_val.strip()
+
+                    names.append({"full": name_val, "given": given, "surname": surname, "is_maiden": is_maiden})
+
+            if not names:
+                names = [{"full": "Unknown Name", "given": "Unknown Name", "surname": "", "is_maiden": False}]
+
+            primary = next((n for n in names if not n["is_maiden"]), names[0])
+            maiden_tag = next((n for n in names if n["is_maiden"]), None)
+
+            indis[pid] = {
+                "given": primary["given"],
+                "primary_surname": primary["surname"],
+                "maiden_tag_surname": maiden_tag["surname"] if maiden_tag else None,
+                "gender": gender,
+                "father_surname": None,
+                "husband_surnames": []
+            }
+
+    # Second pass: Families
+    for elem in root_elements:
+        if elem.get_tag() == "FAM":
+            husb_id = wife_id = None
+            children = []
+            for child in elem.get_child_elements():
+                tag = child.get_tag()
+                val = child.get_value()
+                if tag == "HUSB": husb_id = val
+                elif tag == "WIFE": wife_id = val
+                elif tag == "CHIL": children.append(val)
+
+            husb_surname = indis.get(husb_id, {}).get("primary_surname") if husb_id else None
+
+            if wife_id and husb_surname and wife_id in indis:
+                if husb_surname not in indis[wife_id]["husband_surnames"]:
+                    indis[wife_id]["husband_surnames"].append(husb_surname)
+
+            if husb_surname:
+                for child_id in children:
+                    if child_id in indis:
+                        indis[child_id]["father_surname"] = husb_surname
+
+    # Third pass: Name Construction
+    results = {}
+    nee_label = get_translation(lang, "nee")
+
+    for pid, data in indis.items():
+        given = data["given"]
+        primary_surn = data["primary_surname"]
+
+        if data["gender"] == "F":
+            # Maiden: from tag, or father, or primary (if never married)
+            maiden_surn = data["maiden_tag_surname"] or data["father_surname"]
+
+            # Married: from recorded primary (if it differs from maiden) or husbands
+            # If primary surname matches maiden name, then primary is maiden. We look for married surname elsewhere.
+            if primary_surn and primary_surn != maiden_surn:
+                married_surn = primary_surn
+            elif data["husband_surnames"]:
+                married_surn = data["husband_surnames"][0]
+            else:
+                married_surn = primary_surn
+
+            # Recalculate maiden if still missing and primary isn't the married one
+            if not maiden_surn and primary_surn and primary_surn != married_surn:
+                maiden_surn = primary_surn
+
+            if married_surn and maiden_surn and married_surn != maiden_surn:
+                display_name = f"{given} {married_surn} {nee_label} {maiden_surn}"
+                short_name = f"{given} {married_surn}"
+            elif married_surn:
+                display_name = short_name = f"{given} {married_surn}"
+            elif maiden_surn:
+                display_name = short_name = f"{given} {maiden_surn}"
+            else:
+                display_name = short_name = given
+        else:
+            surn = primary_surn or data["father_surname"]
+            name = f"{given} {surn}".strip() if surn else given
+            display_name = short_name = name
+
+        results[pid] = {"display": display_name, "short": short_name}
+
+    return results
 
 def process_individual_events(element, name, dates, individual_details):
     """
@@ -343,43 +437,27 @@ def process_event(event_element, name, dates, event_type=None, individual_id=Non
 def process_gedcom_file(file_path, output_csv_file, lang="he"):
     """
     Orchestrates the parsing of a GEDCOM file to extract Hebrew date events.
-
-    This function performs a full scan of the GEDCOM file:
-    1.  It first iterates through all records to build a map of individual IDs to names.
-    2.  It then re-iterates to process events for both individuals and families.
-    3.  Finally, it sorts the collected dates and writes the relevant information
-        to a CSV file.
-
-    Args:
-        file_path (str): The path to the cleaned GEDCOM file.
-        output_csv_file (str): The path to write the output CSV file.
-        lang (str): The language for name formatting.
-
-    Returns:
-        tuple: A tuple containing:
-            - list: A list of lists, where each inner list represents a row in the CSV
-                    (date, name, event type).
-            - dict: A dictionary containing details for each individual, such as
-                    birth and death years.
     """
     gedcom_parser = Parser()
     try:
         gedcom_parser.parse_file(file_path)
     except Exception as e:
         logger.error(f"Error parsing GEDCOM file {file_path}: {e}")
-        return [], {}
+        return [], {}, {}
 
     root_child_elements = gedcom_parser.get_root_child_elements()
+    id2names = get_all_individuals_names(root_child_elements, lang=lang)
 
     dates = []
-    individuals = {}
+    individuals = {} # id -> display name
     individual_details = {}
     family_details = {}
 
     for element in root_child_elements:
         if element.get_tag() == "INDI":
             individual_id = element.get_pointer()
-            name = get_name_from_individual(element, lang=lang)
+            name_info = id2names.get(individual_id, {"display": "Unknown Name", "short": "Unknown Name"})
+            name = name_info["display"]
             individuals[individual_id] = name
             gender = element.get_gender()
             individual_details[name] = {"birth_year": None, "death_year": None, "gender": gender}
