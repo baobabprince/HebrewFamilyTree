@@ -1,0 +1,74 @@
+name: Check Google Drive GEDCOM File for Yahrzeits
+
+on:
+  schedule:
+    # Runs every Thursday at 03:00 UTC (05:00 Israel Winter Time / 06:00 Israel Summer Time).
+    - cron: '0 3 * * 4'
+  workflow_dispatch:
+    inputs:
+      person_id:
+        description: 'GEDCOM ID of the person to calculate distances from'
+        required: false
+        type: string
+      distance_threshold:
+        description: 'Distance threshold for including path in issue (default: 8)'
+        required: false
+        type: number
+        default: "8"
+      days:
+        description: 'Number of days to look ahead for events (default: 8)'
+        required: false
+        type: number
+        default: "8"
+      lang:
+        description: 'Language for the output (en/he)'
+        required: false
+        type: choice
+        options:
+        - he
+        - en
+        default: 'he'
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  check_and_run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run tests
+        run: python3 -m unittest discover family_tree_notifier/tests
+
+      - name: Install GitHub CLI
+        run: sudo apt-get install gh -y
+
+      - name: Run main processing script for Yahrzeits only
+        id: process_gedcom
+        run: python -m family_tree_notifier.main --lang ${{ github.event.inputs.lang || 'he' }} --days ${{ github.event.inputs.days || 8 }} --event-type DEAT
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+          PERSONID: ${{ github.event.inputs.person_id || secrets.PERSONID }}
+          DISTANCE_THRESHOLD: ${{ github.event.inputs.distance_threshold }}
+
+      - name: Create GitHub Issue for Upcoming Yahrzeits
+        if: steps.process_gedcom.outputs.has_relevant_dates == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_TITLE: ${{ steps.process_gedcom.outputs.issue_title }}
+          ISSUE_BODY: ${{ steps.process_gedcom.outputs.issue_body }}
+        run: |
+          echo "Relevant upcoming yahrzeits found. Creating GitHub Issue..."
+          gh issue create --title "$ISSUE_TITLE" --repo ${{ github.repository }} --body "$ISSUE_BODY" --assignee "${{ github.actor }}" --label "family-dates"
