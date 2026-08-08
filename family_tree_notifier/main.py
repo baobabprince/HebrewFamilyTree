@@ -46,9 +46,11 @@ def main():
     parser = argparse.ArgumentParser(description="Generate GitHub issues for upcoming Hebrew calendar events.")
     parser.add_argument("--lang", default="he", choices=["he", "en"], help="Language for the issue (he for Hebrew, en for English).")
     parser.add_argument("--days", type=int, default=UPCOMING_DAYS, help="Number of days to look ahead for events.")
+    parser.add_argument("--event-type", default=None, choices=["BIRT", "DEAT", "MARR"], help="Filter events by type (e.g. BIRT for birthdays, DEAT for yahrzeits, MARR for anniversaries).")
     args = parser.parse_args()
     lang = args.lang
     num_days = args.days
+    event_type_filter = args.event_type
 
     # ------------------------------------------------------------------ logging
     logging.basicConfig(
@@ -84,6 +86,9 @@ def main():
     hebrew_dates_map = get_hebrew_date_range_api(today_gregorian, num_days)
 
     relevant_upcoming_dates = find_relevant_hebrew_dates(processed_rows, hebrew_dates_map, has_id_column=True)
+    if event_type_filter:
+        logging.info(f"Filtering upcoming dates to include only event type: {event_type_filter}")
+        relevant_upcoming_dates = [item for item in relevant_upcoming_dates if item[3] == event_type_filter]
 
     gedcom_parser = Parser()
     gedcom_parser.parse_file(FIXED_GEDCOM_FILE)
@@ -124,7 +129,11 @@ def main():
         enriched.append((dist, path, gregorian_date, original_date_str_parsed, name, event_type))
 
     parasha = get_parasha_for_week(today_gregorian, lang, num_days)
-    issue_title_base = get_translation(lang, "issue_title")
+    if event_type_filter == "DEAT":
+        issue_title_base = get_translation(lang, "issue_title_yahrzeits")
+    else:
+        issue_title_base = get_translation(lang, "issue_title")
+
     issue_title = f"{issue_title_base} {parasha}" if parasha else f"{issue_title_base}: {today_gregorian.strftime('%Y-%m-%d')}"
     issue_body = build_issue_body(enriched, id2name, today_gregorian, distance_threshold, person_id, gedcom_parser, individual_details, family_details, lang)
 
@@ -135,7 +144,10 @@ def main():
             fh.write("issue_body<<EOF\n")
             fh.write(issue_body)
             fh.write("\nEOF\n")
-            fh.write("has_relevant_dates=true\n")
+            if enriched:
+                fh.write("has_relevant_dates=true\n")
+            else:
+                fh.write("has_relevant_dates=false\n")
     else:
         logging.warning("GITHUB_OUTPUT not set. skipping workflow outputs.")
 
