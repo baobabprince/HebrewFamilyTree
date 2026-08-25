@@ -126,7 +126,7 @@ def main():
                 if dist_single is not None:
                     dist, path = dist_single, path_single
 
-        enriched.append((dist, path, gregorian_date, original_date_str_parsed, name, event_type))
+        enriched.append((dist, path, gregorian_date, original_date_str_parsed, name, event_type, gedcom_id))
 
     parasha = get_parasha_for_week(today_gregorian, lang, num_days)
     if event_type_filter == "DEAT":

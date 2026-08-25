@@ -89,6 +89,48 @@ def get_relationship(p1_id, p2_id, parser: Parser, lang="he"):
 
     return get_translation(lang, "relative")
 
+def get_parents_names(person_id, parser: Parser, id2name, lang="he"):
+    """
+    Returns a comma-separated string of the person's parents' display names,
+    or an empty string if parents cannot be resolved.
+    """
+    if not person_id or "," in str(person_id):
+        return ""
+
+    try:
+        person = parser.get_element_dictionary()[person_id]
+    except KeyError:
+        return ""
+
+    famc_id = None
+    for child in person.get_child_elements():
+        if child.get_tag() == "FAMC":
+            famc_id = child.get_value()
+            break
+
+    if not famc_id:
+        return ""
+
+    family = parser.get_element_dictionary().get(famc_id)
+    if not family:
+        return ""
+
+    father_id = None
+    mother_id = None
+    for child in family.get_child_elements():
+        if child.get_tag() == "HUSB":
+            father_id = child.get_value()
+        elif child.get_tag() == "WIFE":
+            mother_id = child.get_value()
+
+    parent_names = []
+    if father_id:
+        parent_names.append(id2name.get(father_id, father_id))
+    if mother_id:
+        parent_names.append(id2name.get(mother_id, mother_id))
+
+    return ", ".join(parent_names)
+
 def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold, person_id, parser, individual_details, family_details, lang="he"):
     """
     Constructs the Markdown body for the GitHub issue.
@@ -97,10 +139,12 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
     Markdown string. It includes emojis, age calculations, and the genealogical
     path from the `PERSONID` if the distance exceeds the threshold.
 
+    For yahrzeit (DEAT) events, parents' names are included when available.
+
     Args:
         enriched_list (list): A list of tuples, where each tuple contains event
                               details: (distance, path, gregorian_date,
-                              heb_date_str, name, event_type).
+                              heb_date_str, name, event_type[, gedcom_id]).
         id2name (dict): A dictionary mapping GEDCOM pointers to display names.
         today_gregorian (date): The current date, for the issue header.
         distance_threshold (int): The distance beyond which the genealogical path
@@ -123,7 +167,14 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
     # sort by date (closest first), then by distance
     enriched_list.sort(key=lambda t: (t[2], t[0]))
 
-    for dist, path, gregorian_date, original_date_str_parsed, name, event_type in enriched_list:
+    for item in enriched_list:
+        # Support both legacy 6-tuples and new 7-tuples that include gedcom_id
+        if len(item) >= 7:
+            dist, path, gregorian_date, original_date_str_parsed, name, event_type, gedcom_id = item[:7]
+        else:
+            dist, path, gregorian_date, original_date_str_parsed, name, event_type = item[:6]
+            gedcom_id = path[-1] if path else None
+
         hebrew_weekday = get_translation(lang, gregorian_date.strftime('%A').lower())
         event_name = get_translation(lang, event_type.lower())
 
@@ -192,6 +243,12 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
         issue_body += get_translation(lang, "event_header", emoji=emoji, hebrew_weekday=hebrew_weekday, original_date_str_parsed=original_date_str_parsed)
         issue_body += get_translation(lang, "event_type_label", event_name=event_name)
         issue_body += get_translation(lang, "person_family_label", name=name, age_str=age_str)
+
+        # For yahrzeits, include parents' names when available
+        if event_type == "DEAT":
+            parents = get_parents_names(gedcom_id, parser, id2name, lang)
+            if parents:
+                issue_body += get_translation(lang, "parents_label", parents=parents)
 
         if person_id and dist is not None and dist > distance_threshold and path:
             path_parts = []
