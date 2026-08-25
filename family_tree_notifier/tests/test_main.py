@@ -54,13 +54,14 @@ class TestMain(unittest.TestCase):
     def test_build_issue_body_yahrzeit(self):
         # Mock data for a yahrzeit
         enriched_list = [
-            (1, ['@I1@'], date(2024, 1, 1), 'א׳ בטבת', 'John Doe', 'DEAT')
+            (1, ['@I1@'], date(2024, 1, 1), 'א׳ בטבת', 'John Doe', 'DEAT', '@I1@')
         ]
         id2name = {'@I1@': 'John Doe'}
         today_gregorian = date(2024, 1, 1)
         distance_threshold = 0
         person_id = '@I2@'
         parser = Mock()
+        parser.get_element_dictionary.return_value = {}
         individual_details = {
             'John Doe': {'birth_year': 1950, 'death_year': 2020}
         }
