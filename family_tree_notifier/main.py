@@ -66,7 +66,6 @@ def _extract_contact_name_variants(contact_display_name):
     if not contact_display_name:
         return []
     variants = [contact_display_name]
-    # Parenthetical subject: "Contact (Subject)"
     match = re.search(r'\(([^)]+)\)\s*$', str(contact_display_name))
     if match:
         subject = match.group(1).strip()
@@ -139,18 +138,6 @@ def dedupe_contact_events_against_tree(events, tree_person_names):
 def main():
     """
     Main function to orchestrate the entire family tree event notification process.
-
-    This script executes the following steps:
-    1.  Downloads the GEDCOM file from Google Drive.
-    2.  Fixes and cleans the GEDCOM file format.
-    3.  Processes the GEDCOM to extract individuals, families, and Hebrew date events.
-    4.  Fetches the upcoming week's Hebrew dates from the Hebcal API.
-    5.  Identifies relevant events that fall within the upcoming week.
-    6.  Builds a family tree graph to calculate genealogical distances.
-    7.  Enriches the event data with distance and path information.
-    8.  Constructs a title and body for a GitHub issue.
-    9.  Writes the issue content to the `GITHUB_OUTPUT` file for use in a
-        GitHub Actions workflow.
     """
     parser = argparse.ArgumentParser(description="Generate GitHub issues for upcoming Hebrew calendar events.")
     parser.add_argument("--lang", default="he", choices=["he", "en"], help="Language for the issue (he for Hebrew, en for English).")
@@ -164,7 +151,6 @@ def main():
     event_type_filter = args.event_type
     sync_contacts = args.sync_contacts
 
-    # ------------------------------------------------------------------ logging
     logging.basicConfig(
         level=logging.DEBUG,
         format='%(asctime)s - %(levelname)s - %(message)s',
@@ -186,7 +172,6 @@ def main():
 
     logging.info("Step 3: Processing GEDCOM …")
     person_id = os.environ.get('PERSONID')
-    distance_threshold = os.environ.get('DISTANCE_THRESHOLD')
     processed_rows, individual_details, family_details = process_gedcom_file(FIXED_GEDCOM_FILE, OUTPUT_CSV_FILE, lang=lang)
     logging.debug(f"Processed rows from GEDCOM: {processed_rows}")
 
@@ -194,31 +179,34 @@ def main():
         logging.info("No events found in GEDCOM.")
         return
 
+    # Build graph early so all tree display names are available for contact dedupe
+    gedcom_parser = Parser()
+    gedcom_parser.parse_file(FIXED_GEDCOM_FILE)
+    G, id2name = build_graph(FIXED_GEDCOM_FILE, lang=lang)
+
+    tree_person_names = set(individual_details.keys())
+    tree_person_names.update(id2name.values())
+    for row in processed_rows:
+        if isinstance(row, dict):
+            name = row.get("name") or row.get("Name")
+            if name:
+                tree_person_names.add(name)
+        elif isinstance(row, (list, tuple)):
+            for cell in row:
+                if isinstance(cell, str) and len(cell) > 1 and not cell.startswith("@") and not cell.startswith("people/"):
+                    # skip pure dates / codes
+                    if any(c.isalpha() or '\u0590' <= c <= '\u05FF' for c in cell):
+                        tree_person_names.add(cell)
+
     today_gregorian = date.today()
     hebrew_dates_map = get_hebrew_date_range_api(today_gregorian, num_days)
 
     relevant_upcoming_dates = find_relevant_hebrew_dates(processed_rows, hebrew_dates_map, has_id_column=True)
 
-    # All display names known from the GEDCOM (for contact de-duplication)
-    tree_person_names = set(individual_details.keys())
-    for row in processed_rows:
-        # processed_rows rows typically include a name field; support tuple/list/dict shapes
-        if isinstance(row, dict):
-            name = row.get("name") or row.get("Name")
-            if name:
-                tree_person_names.add(name)
-        elif isinstance(row, (list, tuple)) and len(row) >= 3:
-            # common shape from find_relevant / process: includes name somewhere
-            for cell in row:
-                if isinstance(cell, str) and len(cell) > 1 and not cell.startswith("@"):
-                    tree_person_names.add(cell)
-
     if sync_contacts:
         logging.info("Syncing events from Google Contacts …")
         contact_events = get_upcoming_contact_events(hebrew_dates_map)
         logging.info(f"Found {len(contact_events)} relevant events from Google Contacts.")
-        # contact_events elements: (gregorian_date, original_date_str_parsed, contact_name, event_type, resource_name)
-        # find_relevant_hebrew_dates elements: (gregorian_date, original_date_str_parsed, name, event_type, gedcom_id)
         relevant_upcoming_dates.extend(contact_events)
         before = len(relevant_upcoming_dates)
         relevant_upcoming_dates = dedupe_contact_events_against_tree(
@@ -232,14 +220,8 @@ def main():
         logging.info(f"Filtering upcoming dates to include only event type: {event_type_filter}")
         relevant_upcoming_dates = [item for item in relevant_upcoming_dates if item[3] == event_type_filter]
 
-    # Chronological order: same day together, tree events (lower dist) before contacts
+    # Chronological order: same day together, tree events before contacts
     relevant_upcoming_dates.sort(key=lambda t: (t[0], 0 if not _is_contact_event(t[4]) else 1, t[2]))
-
-    gedcom_parser = Parser()
-    gedcom_parser.parse_file(FIXED_GEDCOM_FILE)
-    G, id2name = build_graph(FIXED_GEDCOM_FILE, lang=lang)
-    # Enrich tree names with graph display names
-    tree_person_names.update(id2name.values())
 
     PERSONID = os.getenv("PERSONID")
     try:
@@ -255,20 +237,17 @@ def main():
         path = []
 
         if PERSONID and gedcom_id:
-            # Handle marriage events with two IDs
             if "," in gedcom_id:
                 husband_id, wife_id = gedcom_id.split(',')
 
                 dist1, path1 = distance_and_path(G, PERSONID, husband_id)
                 dist2, path2 = distance_and_path(G, PERSONID, wife_id)
 
-                # Choose the shorter path
                 if dist1 is not None and (dist2 is None or dist1 <= dist2):
                     dist, path = dist1, path1
                 elif dist2 is not None:
                     dist, path = dist2, path2
 
-            # Handle individual events (skip People API resource names)
             elif not _is_contact_event(gedcom_id):
                 dist_single, path_single = distance_and_path(G, PERSONID, gedcom_id)
                 if dist_single is not None:
@@ -299,7 +278,7 @@ def main():
     else:
         logging.warning("GITHUB_OUTPUT not set. skipping workflow outputs.")
 
-    logging.info("Script finished.")    
-# ------------------------------------------------------------------ entrypoint
+    logging.info("Script finished.")
+
 if __name__ == "__main__":
     main()
