@@ -13,7 +13,7 @@ This project processes a GEDCOM file to find upcoming Hebrew-date based events (
    pip install -r requirements.txt
    ```
 3. **Google API Credentials**:
-   - Enable the Google Drive API in your Google Cloud Console.
+   - Enable the **Google Drive API** and **People API** in your Google Cloud Console.
    - Create a service account and download its JSON key.
    - Share your GEDCOM file in Google Drive with the service account's email.
    - Set the content of the JSON key as a GitHub Secret named `GOOGLE_CREDENTIALS_JSON`.
@@ -26,7 +26,7 @@ This project processes a GEDCOM file to find upcoming Hebrew-date based events (
    pip install -r requirements.txt
    ```
 3. **הגדירו גישה ל-Google API**:
-   - הפעילו את Google Drive API ב-Google Cloud Console.
+   - הפעילו את **Google Drive API** ואת **People API** ב-Google Cloud Console.
    - צרו חשבון שירות (service account) והורידו את מפתח ה-JSON שלו.
    - שתפו את קובץ ה-GEDCOM שלכם ב-Google Drive עם כתובת המייל של חשבון השירות.
    - הגדירו את תוכן קובץ ה-JSON כ-GitHub Secret בשם `GOOGLE_CREDENTIALS_JSON`.
