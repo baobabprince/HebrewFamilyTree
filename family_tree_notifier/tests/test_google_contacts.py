@@ -13,7 +13,7 @@ class TestGoogleContactsUtils(unittest.TestCase):
         note = "תאריך עברי: טו באייר"
         parsed = parse_hebrew_date_and_event_type_from_note(note)
         self.assertEqual(len(parsed), 1)
-        month_num, day, date_str, event_type = parsed[0]
+        month_num, day, date_str, event_type, subject_name = parsed[0]
         self.assertEqual(month_num, 8) # Iyyar
         self.assertEqual(day, 15)
         self.assertEqual(date_str, "טו אייר")
@@ -23,7 +23,7 @@ class TestGoogleContactsUtils(unittest.TestCase):
         note = "יארצייט ג' בתשרי"
         parsed = parse_hebrew_date_and_event_type_from_note(note)
         self.assertEqual(len(parsed), 1)
-        month_num, day, date_str, event_type = parsed[0]
+        month_num, day, date_str, event_type, subject_name = parsed[0]
         self.assertEqual(month_num, 1) # Tishrei
         self.assertEqual(day, 3)
         self.assertEqual(date_str, "ג תשרי")
@@ -33,18 +33,39 @@ class TestGoogleContactsUtils(unittest.TestCase):
         note = "יום נישואין: י בטבת"
         parsed = parse_hebrew_date_and_event_type_from_note(note)
         self.assertEqual(len(parsed), 1)
-        month_num, day, date_str, event_type = parsed[0]
+        month_num, day, date_str, event_type, subject_name = parsed[0]
         self.assertEqual(month_num, 4) # Tevet
         self.assertEqual(day, 10)
         self.assertEqual(date_str, "י טבת")
         self.assertEqual(event_type, "MARR")
 
-    def test_parse_hebrew_date_and_event_type_from_note_multiple_lines(self):
-        note = "יום הולדת: טו באייר\nיארצייט: ג בתשרי"
+    def test_parse_hebrew_date_and_event_type_from_note_menachem_av(self):
+        note = "שקד - כד מנחם אב תשעט"
         parsed = parse_hebrew_date_and_event_type_from_note(note)
-        self.assertEqual(len(parsed), 2)
-        self.assertEqual(parsed[0][3], "BIRT")
-        self.assertEqual(parsed[1][3], "DEAT")
+        self.assertEqual(len(parsed), 1)
+        month_num, day, date_str, event_type, subject_name = parsed[0]
+        self.assertEqual(month_num, 11) # Av
+        self.assertEqual(day, 24)
+        self.assertEqual(date_str, "כד אב")
+        self.assertEqual(event_type, "BIRT")
+        self.assertEqual(subject_name, "שקד")
+
+    def test_parse_hebrew_date_and_event_type_from_note_multiline_children(self):
+        note = "א ניסן התש\"ן\nנטע\nשקד - כד מנחם אב תשעט\nדרור - טו ניסן תשפב"
+        parsed = parse_hebrew_date_and_event_type_from_note(note)
+        self.assertEqual(len(parsed), 3)
+
+        self.assertEqual(parsed[0][0], 7) # Nisan
+        self.assertEqual(parsed[0][1], 1)
+        self.assertEqual(parsed[0][4], "נטע")
+
+        self.assertEqual(parsed[1][0], 11) # Av
+        self.assertEqual(parsed[1][1], 24)
+        self.assertEqual(parsed[1][4], "שקד")
+
+        self.assertEqual(parsed[2][0], 7) # Nisan
+        self.assertEqual(parsed[2][1], 15)
+        self.assertEqual(parsed[2][4], "דרור")
 
     @patch('family_tree_notifier.google_contacts_utils.get_people_service')
     def test_get_upcoming_contact_events(self, mock_get_people_service):
@@ -56,22 +77,22 @@ class TestGoogleContactsUtils(unittest.TestCase):
             'connections': [
                 {
                     'resourceName': 'people/c12345',
-                    'names': [{'displayName': 'ישראל ישראלי'}],
-                    'biographies': [{'value': 'יום הולדת טו באייר'}]
+                    'names': [{'displayName': 'אבנר בן זמרה'}],
+                    'biographies': [{'value': 'שקד - כד מנחם אב תשעט'}]
                 }
             ]
         }
 
         target_hebrew_dates_map = {
-            (8, 15): date(2024, 5, 23)
+            (11, 24): date(2024, 8, 28)
         }
 
         events = get_upcoming_contact_events(target_hebrew_dates_map)
         self.assertEqual(len(events), 1)
         greg_date, orig_str, name, event_type, resource_name = events[0]
-        self.assertEqual(greg_date, date(2024, 5, 23))
-        self.assertEqual(orig_str, "טו אייר")
-        self.assertEqual(name, "ישראל ישראלי")
+        self.assertEqual(greg_date, date(2024, 8, 28))
+        self.assertEqual(orig_str, "כד אב")
+        self.assertEqual(name, "אבנר בן זמרה (שקד)")
         self.assertEqual(event_type, "BIRT")
         self.assertEqual(resource_name, "people/c12345")
 
