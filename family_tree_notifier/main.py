@@ -20,6 +20,7 @@ from .constants import (
 from .google_drive_utils import download_gedcom_from_drive
 from .gedcom_utils import fix_gedcom_format, process_gedcom_file
 from .hebcal_api import get_hebrew_date_range_api, find_relevant_hebrew_dates, get_parasha_for_week
+from .google_contacts_utils import get_upcoming_contact_events
 from gedcom.parser import Parser
 from .gedcom_graph import build_graph, distance_and_path
 from .localization import get_translation
@@ -47,10 +48,13 @@ def main():
     parser.add_argument("--lang", default="he", choices=["he", "en"], help="Language for the issue (he for Hebrew, en for English).")
     parser.add_argument("--days", type=int, default=UPCOMING_DAYS, help="Number of days to look ahead for events.")
     parser.add_argument("--event-type", default=None, choices=["BIRT", "DEAT", "MARR"], help="Filter events by type (e.g. BIRT for birthdays, DEAT for yahrzeits, MARR for anniversaries).")
+    parser.add_argument("--sync-contacts", dest="sync_contacts", action="store_true", default=True, help="Sync upcoming events from Google Contacts notes (enabled by default).")
+    parser.add_argument("--no-sync-contacts", dest="sync_contacts", action="store_false", help="Disable Google Contacts sync.")
     args = parser.parse_args()
     lang = args.lang
     num_days = args.days
     event_type_filter = args.event_type
+    sync_contacts = args.sync_contacts
 
     # ------------------------------------------------------------------ logging
     logging.basicConfig(
@@ -86,6 +90,15 @@ def main():
     hebrew_dates_map = get_hebrew_date_range_api(today_gregorian, num_days)
 
     relevant_upcoming_dates = find_relevant_hebrew_dates(processed_rows, hebrew_dates_map, has_id_column=True)
+
+    if sync_contacts:
+        logging.info("Syncing events from Google Contacts …")
+        contact_events = get_upcoming_contact_events(hebrew_dates_map)
+        logging.info(f"Found {len(contact_events)} relevant events from Google Contacts.")
+        # contact_events elements: (gregorian_date, original_date_str_parsed, contact_name, event_type, resource_name)
+        # find_relevant_hebrew_dates elements: (gregorian_date, original_date_str_parsed, name, event_type, gedcom_id)
+        relevant_upcoming_dates.extend(contact_events)
+
     if event_type_filter:
         logging.info(f"Filtering upcoming dates to include only event type: {event_type_filter}")
         relevant_upcoming_dates = [item for item in relevant_upcoming_dates if item[3] == event_type_filter]

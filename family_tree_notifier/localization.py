@@ -38,6 +38,7 @@ TRANSLATIONS = {
         "deat": "יארצייט",
         "marr": "יום נישואין",
         "nee": "לבית",
+        "friends": "חברים",
     },
     "en": {
         "husband_of": "husband of",
@@ -76,6 +77,7 @@ TRANSLATIONS = {
         "deat": "Yahrzeit",
         "marr": "Anniversary",
         "nee": "née",
+        "friends": "Friends",
     }
 }
 

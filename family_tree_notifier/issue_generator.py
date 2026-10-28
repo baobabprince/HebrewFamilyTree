@@ -250,7 +250,10 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
             if parents:
                 issue_body += get_translation(lang, "parents_label", parents=parents)
 
-        if person_id and dist is not None and dist > distance_threshold and path:
+        if gedcom_id and gedcom_id.startswith("people/"):
+            relationship_label = get_translation(lang, "friends")
+            issue_body += get_translation(lang, "path_label", readable_path=relationship_label)
+        elif person_id and dist is not None and dist > distance_threshold and path:
             path_parts = []
             reversed_path = list(reversed(path))
             for i in range(len(reversed_path) - 1):
