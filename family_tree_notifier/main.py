@@ -32,8 +32,6 @@ def _normalize_person_name(name):
     """Normalize a display name for duplicate detection."""
     if not name:
         return ""
-    # Drop subject suffix like "Contact Name (Child Name)" → keep both parts searchable
-    # but primary comparison uses full string without punctuation noise.
     cleaned = re.sub(r'["\'()\[\]{}]', ' ', str(name))
     cleaned = re.sub(r'\s+', ' ', cleaned).strip().lower()
     return cleaned
@@ -50,16 +48,34 @@ def _names_overlap(name_a, name_b):
         return False
     if a == b:
         return True
-    # Containment (e.g. "רנת תמר בן זמרה" inside a longer contact label)
     if a in b or b in a:
         return True
     tokens_a = set(a.split())
     tokens_b = set(b.split())
-    # Require at least 2 shared tokens when both names have 2+ words
     shared = tokens_a & tokens_b
     if len(shared) >= 2:
         return True
     return False
+
+
+def _extract_contact_name_variants(contact_display_name):
+    """
+    From contact labels like "אבנר בן זמרה (שקד)" return all name parts
+    that might identify the person the event is about.
+    """
+    if not contact_display_name:
+        return []
+    variants = [contact_display_name]
+    # Parenthetical subject: "Contact (Subject)"
+    match = re.search(r'\(([^)]+)\)\s*$', str(contact_display_name))
+    if match:
+        subject = match.group(1).strip()
+        if subject:
+            variants.append(subject)
+        base = contact_display_name[: match.start()].strip()
+        if base:
+            variants.append(base)
+    return variants
 
 
 def _is_contact_event(gedcom_id):
@@ -67,12 +83,13 @@ def _is_contact_event(gedcom_id):
     return isinstance(gedcom_id, str) and gedcom_id.startswith("people/")
 
 
-def dedupe_contact_events_against_tree(events):
+def dedupe_contact_events_against_tree(events, tree_person_names):
     """
-    Remove Google Contacts events that already appear from the GEDCOM tree
-    for the same person, same event type, and same Gregorian date.
+    Remove Google Contacts events when the person (or subject in parentheses)
+    already exists in the GEDCOM tree, or when the same event already appears
+    from the tree on the same day.
 
-    Tree events are preferred. Contact-only events are kept.
+    Tree events are preferred. Contact-only people are kept.
     """
     tree_events = [e for e in events if not _is_contact_event(e[4])]
     contact_events = [e for e in events if _is_contact_event(e[4])]
@@ -80,16 +97,39 @@ def dedupe_contact_events_against_tree(events):
     kept_contacts = []
     for contact in contact_events:
         c_date, _, c_name, c_type, _ = contact
-        duplicate = False
-        for tree in tree_events:
-            t_date, _, t_name, t_type, _ = tree
-            if t_date == c_date and t_type == c_type and _names_overlap(t_name, c_name):
-                duplicate = True
-                logging.info(
-                    f"Skipping contact event already in tree: {c_name} ({c_type}) on {c_date}"
-                )
+        name_variants = _extract_contact_name_variants(c_name)
+        skip = False
+
+        # 1) Person (or child subject) already lives in the GEDCOM tree
+        for variant in name_variants:
+            for tree_name in tree_person_names:
+                if _names_overlap(variant, tree_name):
+                    skip = True
+                    logging.info(
+                        f"Skipping contact event for tree person: {c_name} "
+                        f"(matched tree name '{tree_name}', type {c_type}) on {c_date}"
+                    )
+                    break
+            if skip:
                 break
-        if not duplicate:
+
+        # 2) Same-day / same-type duplicate against upcoming tree events
+        if not skip:
+            for tree in tree_events:
+                t_date, _, t_name, t_type, _ = tree
+                if t_date == c_date and t_type == c_type:
+                    for variant in name_variants:
+                        if _names_overlap(t_name, variant):
+                            skip = True
+                            logging.info(
+                                f"Skipping contact event already in tree events: "
+                                f"{c_name} ({c_type}) on {c_date}"
+                            )
+                            break
+                if skip:
+                    break
+
+        if not skip:
             kept_contacts.append(contact)
 
     return tree_events + kept_contacts
@@ -159,6 +199,20 @@ def main():
 
     relevant_upcoming_dates = find_relevant_hebrew_dates(processed_rows, hebrew_dates_map, has_id_column=True)
 
+    # All display names known from the GEDCOM (for contact de-duplication)
+    tree_person_names = set(individual_details.keys())
+    for row in processed_rows:
+        # processed_rows rows typically include a name field; support tuple/list/dict shapes
+        if isinstance(row, dict):
+            name = row.get("name") or row.get("Name")
+            if name:
+                tree_person_names.add(name)
+        elif isinstance(row, (list, tuple)) and len(row) >= 3:
+            # common shape from find_relevant / process: includes name somewhere
+            for cell in row:
+                if isinstance(cell, str) and len(cell) > 1 and not cell.startswith("@"):
+                    tree_person_names.add(cell)
+
     if sync_contacts:
         logging.info("Syncing events from Google Contacts …")
         contact_events = get_upcoming_contact_events(hebrew_dates_map)
@@ -167,7 +221,9 @@ def main():
         # find_relevant_hebrew_dates elements: (gregorian_date, original_date_str_parsed, name, event_type, gedcom_id)
         relevant_upcoming_dates.extend(contact_events)
         before = len(relevant_upcoming_dates)
-        relevant_upcoming_dates = dedupe_contact_events_against_tree(relevant_upcoming_dates)
+        relevant_upcoming_dates = dedupe_contact_events_against_tree(
+            relevant_upcoming_dates, tree_person_names
+        )
         skipped = before - len(relevant_upcoming_dates)
         if skipped:
             logging.info(f"Removed {skipped} contact event(s) already present in the family tree.")
@@ -182,6 +238,9 @@ def main():
     gedcom_parser = Parser()
     gedcom_parser.parse_file(FIXED_GEDCOM_FILE)
     G, id2name = build_graph(FIXED_GEDCOM_FILE, lang=lang)
+    # Enrich tree names with graph display names
+    tree_person_names.update(id2name.values())
+
     PERSONID = os.getenv("PERSONID")
     try:
         distance_threshold = int(os.getenv("DISTANCE_THRESHOLD", DISTANCE_THRESHOLD))
