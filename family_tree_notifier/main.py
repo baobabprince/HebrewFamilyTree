@@ -9,6 +9,7 @@ New features compared to original:
 """
 
 import os
+import re
 import logging
 import argparse
 from datetime import date, timedelta
@@ -25,6 +26,73 @@ from gedcom.parser import Parser
 from .gedcom_graph import build_graph, distance_and_path
 from .localization import get_translation
 from .issue_generator import build_issue_body
+
+
+def _normalize_person_name(name):
+    """Normalize a display name for duplicate detection."""
+    if not name:
+        return ""
+    # Drop subject suffix like "Contact Name (Child Name)" → keep both parts searchable
+    # but primary comparison uses full string without punctuation noise.
+    cleaned = re.sub(r'["\'()\[\]{}]', ' ', str(name))
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip().lower()
+    return cleaned
+
+
+def _names_overlap(name_a, name_b):
+    """
+    Return True if two names likely refer to the same person.
+    Uses normalized equality or containment of significant tokens.
+    """
+    a = _normalize_person_name(name_a)
+    b = _normalize_person_name(name_b)
+    if not a or not b:
+        return False
+    if a == b:
+        return True
+    # Containment (e.g. "רנת תמר בן זמרה" inside a longer contact label)
+    if a in b or b in a:
+        return True
+    tokens_a = set(a.split())
+    tokens_b = set(b.split())
+    # Require at least 2 shared tokens when both names have 2+ words
+    shared = tokens_a & tokens_b
+    if len(shared) >= 2:
+        return True
+    return False
+
+
+def _is_contact_event(gedcom_id):
+    """Contact events use People API resource names like people/c123."""
+    return isinstance(gedcom_id, str) and gedcom_id.startswith("people/")
+
+
+def dedupe_contact_events_against_tree(events):
+    """
+    Remove Google Contacts events that already appear from the GEDCOM tree
+    for the same person, same event type, and same Gregorian date.
+
+    Tree events are preferred. Contact-only events are kept.
+    """
+    tree_events = [e for e in events if not _is_contact_event(e[4])]
+    contact_events = [e for e in events if _is_contact_event(e[4])]
+
+    kept_contacts = []
+    for contact in contact_events:
+        c_date, _, c_name, c_type, _ = contact
+        duplicate = False
+        for tree in tree_events:
+            t_date, _, t_name, t_type, _ = tree
+            if t_date == c_date and t_type == c_type and _names_overlap(t_name, c_name):
+                duplicate = True
+                logging.info(
+                    f"Skipping contact event already in tree: {c_name} ({c_type}) on {c_date}"
+                )
+                break
+        if not duplicate:
+            kept_contacts.append(contact)
+
+    return tree_events + kept_contacts
 
 
 # ------------------------------------------------------------------ main
@@ -98,10 +166,18 @@ def main():
         # contact_events elements: (gregorian_date, original_date_str_parsed, contact_name, event_type, resource_name)
         # find_relevant_hebrew_dates elements: (gregorian_date, original_date_str_parsed, name, event_type, gedcom_id)
         relevant_upcoming_dates.extend(contact_events)
+        before = len(relevant_upcoming_dates)
+        relevant_upcoming_dates = dedupe_contact_events_against_tree(relevant_upcoming_dates)
+        skipped = before - len(relevant_upcoming_dates)
+        if skipped:
+            logging.info(f"Removed {skipped} contact event(s) already present in the family tree.")
 
     if event_type_filter:
         logging.info(f"Filtering upcoming dates to include only event type: {event_type_filter}")
         relevant_upcoming_dates = [item for item in relevant_upcoming_dates if item[3] == event_type_filter]
+
+    # Chronological order: same day together, tree events (lower dist) before contacts
+    relevant_upcoming_dates.sort(key=lambda t: (t[0], 0 if not _is_contact_event(t[4]) else 1, t[2]))
 
     gedcom_parser = Parser()
     gedcom_parser.parse_file(FIXED_GEDCOM_FILE)
@@ -133,8 +209,8 @@ def main():
                 elif dist2 is not None:
                     dist, path = dist2, path2
 
-            # Handle individual events
-            else:
+            # Handle individual events (skip People API resource names)
+            elif not _is_contact_event(gedcom_id):
                 dist_single, path_single = distance_and_path(G, PERSONID, gedcom_id)
                 if dist_single is not None:
                     dist, path = dist_single, path_single
