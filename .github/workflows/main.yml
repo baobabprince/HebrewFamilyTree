@@ -49,6 +49,9 @@ jobs:
         run: |
           pip install -r requirements.txt
 
+      - name: Write Google token
+        run: echo '${{ secrets.GOOGLE_TOKEN_JSON }}' > token.json
+
       - name: Run tests
         run: python3 -m unittest discover family_tree_notifier/tests
 
