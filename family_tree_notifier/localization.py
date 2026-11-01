@@ -39,6 +39,7 @@ TRANSLATIONS = {
         "marr": "יום נישואין",
         "nee": "לבית",
         "friends": "חברים",
+        "friends_via": "חברים · דרך {contact_name}",
     },
     "en": {
         "husband_of": "husband of",
@@ -78,6 +79,7 @@ TRANSLATIONS = {
         "marr": "Anniversary",
         "nee": "née",
         "friends": "Friends",
+        "friends_via": "Friends · via {contact_name}",
     }
 }
 
