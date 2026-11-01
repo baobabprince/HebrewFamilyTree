@@ -97,6 +97,10 @@ def get_parents_names(person_id, parser: Parser, id2name, lang="he"):
     if not person_id or "," in str(person_id):
         return ""
 
+    # Contact resource names are not GEDCOM IDs
+    if isinstance(person_id, str) and person_id.startswith("people/"):
+        return ""
+
     try:
         person = parser.get_element_dictionary()[person_id]
     except KeyError:
@@ -250,8 +254,15 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
             if parents:
                 issue_body += get_translation(lang, "parents_label", parents=parents)
 
-        if gedcom_id and gedcom_id.startswith("people/"):
-            relationship_label = get_translation(lang, "friends")
+        if gedcom_id and isinstance(gedcom_id, str) and gedcom_id.startswith("people/"):
+            # Optional source contact encoded as people/xxx::Contact Name
+            if "::" in gedcom_id:
+                _, source_contact = gedcom_id.split("::", 1)
+                relationship_label = get_translation(
+                    lang, "friends_via", contact_name=source_contact
+                )
+            else:
+                relationship_label = get_translation(lang, "friends")
             issue_body += get_translation(lang, "path_label", readable_path=relationship_label)
         elif person_id and dist is not None and dist > distance_threshold and path:
             path_parts = []
