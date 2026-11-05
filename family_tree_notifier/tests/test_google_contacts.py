@@ -92,9 +92,10 @@ class TestGoogleContactsUtils(unittest.TestCase):
         greg_date, orig_str, name, event_type, resource_name = events[0]
         self.assertEqual(greg_date, date(2024, 8, 28))
         self.assertEqual(orig_str, "כד אב")
-        self.assertEqual(name, "אבנר בן זמרה (שקד)")
+        # Subject from the note is the event name; source contact is encoded in the id
+        self.assertEqual(name, "שקד")
         self.assertEqual(event_type, "BIRT")
-        self.assertEqual(resource_name, "people/c12345")
+        self.assertEqual(resource_name, "people/c12345::אבנר בן זמרה")
 
 if __name__ == '__main__':
     unittest.main()
