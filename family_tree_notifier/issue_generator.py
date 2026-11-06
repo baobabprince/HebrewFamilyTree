@@ -88,7 +88,6 @@ def get_relationship(p1_id, p2_id, parser: Parser, lang="he"):
     # --- Check 2: p1 is Parent of p2 (Look up p2's FAMC) ---
     p2_famc_element = find_sub_element(p2, 'FAMC')
     if p2_famc_element:
-        famc_id = p2_child_family = None
         famc_id = p2_famc_element.get_value()
         p2_child_family = parser.get_element_dictionary().get(famc_id)
 
