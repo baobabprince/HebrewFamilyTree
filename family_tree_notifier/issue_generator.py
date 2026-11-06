@@ -1,6 +1,34 @@
 from datetime import timedelta
+from urllib.parse import quote
 from gedcom.parser import Parser
 from .localization import get_translation
+
+ANAFIM_BASE = "https://baobabprince.github.io/anafim/"
+
+
+def make_person_link(name, gedcom_id=None):
+    """
+    Return a Markdown link to the person's page on anafim (GitHub Pages).
+
+    Prefer ?id= when we have a real GEDCOM pointer; otherwise use ?q= with
+    the display name so the deep-link search can still resolve the person.
+    """
+    if not name:
+        return name or ""
+
+    use_id = (
+        gedcom_id
+        and isinstance(gedcom_id, str)
+        and not gedcom_id.startswith("people/")
+        and "," not in gedcom_id
+    )
+    if use_id:
+        url = f"{ANAFIM_BASE}?id={quote(gedcom_id)}"
+    else:
+        url = f"{ANAFIM_BASE}?q={quote(str(name))}"
+
+    return f"[{name}]({url})"
+
 
 def get_relationship(p1_id, p2_id, parser: Parser, lang="he"):
     """
@@ -89,10 +117,12 @@ def get_relationship(p1_id, p2_id, parser: Parser, lang="he"):
 
     return get_translation(lang, "relative")
 
+
 def get_parents_names(person_id, parser: Parser, id2name, lang="he"):
     """
-    Returns a comma-separated string of the person's parents' display names,
-    or an empty string if parents cannot be resolved.
+    Returns a comma-separated string of the person's parents' display names
+    (as Markdown links to anafim when possible), or an empty string if
+    parents cannot be resolved.
     """
     if not person_id or "," in str(person_id):
         return ""
@@ -127,13 +157,16 @@ def get_parents_names(person_id, parser: Parser, id2name, lang="he"):
         elif child.get_tag() == "WIFE":
             mother_id = child.get_value()
 
-    parent_names = []
+    parent_links = []
     if father_id:
-        parent_names.append(id2name.get(father_id, father_id))
+        father_name = id2name.get(father_id, father_id)
+        parent_links.append(make_person_link(father_name, father_id))
     if mother_id:
-        parent_names.append(id2name.get(mother_id, mother_id))
+        mother_name = id2name.get(mother_id, mother_id)
+        parent_links.append(make_person_link(mother_name, mother_id))
 
-    return ", ".join(parent_names)
+    return ", ".join(parent_links)
+
 
 def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold, person_id, parser, individual_details, family_details, lang="he"):
     """
@@ -144,6 +177,9 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
     path from the `PERSONID` if the distance exceeds the threshold.
 
     For yahrzeit (DEAT) events, parents' names are included when available.
+
+    Person names (main entry, parents, and path) are rendered as Markdown
+    links to the corresponding page on anafim (GitHub Pages).
 
     Args:
         enriched_list (list): A list of tuples, where each tuple contains event
@@ -244,11 +280,14 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
                     years_married = gregorian_date.year - marriage_year
                     age_str = get_translation(lang, "anniversary_married", years_married=years_married)
 
+        # Main person name → link to anafim
+        linked_name = make_person_link(name, gedcom_id)
+
         issue_body += get_translation(lang, "event_header", emoji=emoji, hebrew_weekday=hebrew_weekday, original_date_str_parsed=original_date_str_parsed)
         issue_body += get_translation(lang, "event_type_label", event_name=event_name)
-        issue_body += get_translation(lang, "person_family_label", name=name, age_str=age_str)
+        issue_body += get_translation(lang, "person_family_label", name=linked_name, age_str=age_str)
 
-        # For yahrzeits, include parents' names when available
+        # For yahrzeits, include parents' names when available (already linked)
         if event_type == "DEAT":
             parents = get_parents_names(gedcom_id, parser, id2name, lang)
             if parents:
@@ -272,9 +311,12 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
                 p2_id = reversed_path[i+1]
                 p1_name = id2name.get(p1_id, p1_id)
                 relationship = get_relationship(p1_id, p2_id, parser, lang)
-                path_parts.append(f"{p1_name} ({relationship})")
+                linked_p1 = make_person_link(p1_name, p1_id)
+                path_parts.append(f"{linked_p1} ({relationship})")
 
-            path_parts.append(id2name.get(reversed_path[-1], reversed_path[-1]))
+            last_id = reversed_path[-1]
+            last_name = id2name.get(last_id, last_id)
+            path_parts.append(make_person_link(last_name, last_id))
             readable_path = " ".join(path_parts)
             issue_body += get_translation(lang, "distance_label", dist=dist)
             issue_body += get_translation(lang, "path_label", readable_path=readable_path)
