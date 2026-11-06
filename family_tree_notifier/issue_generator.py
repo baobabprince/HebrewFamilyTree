@@ -88,6 +88,7 @@ def get_relationship(p1_id, p2_id, parser: Parser, lang="he"):
     # --- Check 2: p1 is Parent of p2 (Look up p2's FAMC) ---
     p2_famc_element = find_sub_element(p2, 'FAMC')
     if p2_famc_element:
+        famc_id = p2_child_family = None
         famc_id = p2_famc_element.get_value()
         p2_child_family = parser.get_element_dictionary().get(famc_id)
 
@@ -120,9 +121,8 @@ def get_relationship(p1_id, p2_id, parser: Parser, lang="he"):
 
 def get_parents_names(person_id, parser: Parser, id2name, lang="he"):
     """
-    Returns a comma-separated string of the person's parents' display names
-    (as Markdown links to anafim when possible), or an empty string if
-    parents cannot be resolved.
+    Returns a comma-separated string of the person's parents' display names,
+    or an empty string if parents cannot be resolved.
     """
     if not person_id or "," in str(person_id):
         return ""
@@ -157,15 +157,13 @@ def get_parents_names(person_id, parser: Parser, id2name, lang="he"):
         elif child.get_tag() == "WIFE":
             mother_id = child.get_value()
 
-    parent_links = []
+    parent_names = []
     if father_id:
-        father_name = id2name.get(father_id, father_id)
-        parent_links.append(make_person_link(father_name, father_id))
+        parent_names.append(id2name.get(father_id, father_id))
     if mother_id:
-        mother_name = id2name.get(mother_id, mother_id)
-        parent_links.append(make_person_link(mother_name, mother_id))
+        parent_names.append(id2name.get(mother_id, mother_id))
 
-    return ", ".join(parent_links)
+    return ", ".join(parent_names)
 
 
 def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold, person_id, parser, individual_details, family_details, lang="he"):
@@ -178,8 +176,8 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
 
     For yahrzeit (DEAT) events, parents' names are included when available.
 
-    Person names (main entry, parents, and path) are rendered as Markdown
-    links to the corresponding page on anafim (GitHub Pages).
+    Only the main person name is rendered as a Markdown link to anafim
+    (GitHub Pages). Parents and path remain plain text.
 
     Args:
         enriched_list (list): A list of tuples, where each tuple contains event
@@ -280,14 +278,14 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
                     years_married = gregorian_date.year - marriage_year
                     age_str = get_translation(lang, "anniversary_married", years_married=years_married)
 
-        # Main person name → link to anafim
+        # Main person name → link to anafim (only this one)
         linked_name = make_person_link(name, gedcom_id)
 
         issue_body += get_translation(lang, "event_header", emoji=emoji, hebrew_weekday=hebrew_weekday, original_date_str_parsed=original_date_str_parsed)
         issue_body += get_translation(lang, "event_type_label", event_name=event_name)
         issue_body += get_translation(lang, "person_family_label", name=linked_name, age_str=age_str)
 
-        # For yahrzeits, include parents' names when available (already linked)
+        # For yahrzeits, include parents' names when available (plain text)
         if event_type == "DEAT":
             parents = get_parents_names(gedcom_id, parser, id2name, lang)
             if parents:
@@ -311,12 +309,11 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
                 p2_id = reversed_path[i+1]
                 p1_name = id2name.get(p1_id, p1_id)
                 relationship = get_relationship(p1_id, p2_id, parser, lang)
-                linked_p1 = make_person_link(p1_name, p1_id)
-                path_parts.append(f"{linked_p1} ({relationship})")
+                path_parts.append(f"{p1_name} ({relationship})")
 
             last_id = reversed_path[-1]
             last_name = id2name.get(last_id, last_id)
-            path_parts.append(make_person_link(last_name, last_id))
+            path_parts.append(last_name)
             readable_path = " ".join(path_parts)
             issue_body += get_translation(lang, "distance_label", dist=dist)
             issue_body += get_translation(lang, "path_label", readable_path=readable_path)
