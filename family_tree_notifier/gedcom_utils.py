@@ -164,10 +164,10 @@ def get_all_individuals_names(root_elements, lang="he"):
                     name_val = child.get_value().replace("/", "").strip()
                     surname = _extract_surname(child)
                     is_maiden = False
-                    for grandchild in child.get_child_elements():
-                        if grandchild.get_tag() == "TYPE" and grandchild.get_value().lower() in ["birth", "maiden"]:
-                            is_maiden = True
-                            break
+             for grandchild in child.get_child_elements():
+                    if grandchild.get_tag() == "TYPE" and grandchild.get_value().lower() in ["birth", "maiden"]:
+                        is_maiden = True
+                        break
 
                     full_val = child.get_value()
                     given = full_val.split("/")[0].strip() if "/" in full_val else full_val.strip()
@@ -264,8 +264,9 @@ def process_individual_events(element, name, dates, individual_details):
     extraction. It also populates the `individual_details` dictionary with
     birth and death years.
 
-    Only life-cycle events that should generate notifications are processed.
-    Immigration / emigration / naturalization (IMMI, EMIG, NATU) are excluded.
+    Only birthdays and yahrzeits generate notifications.
+    Immigration, emigration, naturalization, bar/bat mitzvah, and other
+    event types are excluded.
 
     Args:
         element (Element): The GEDCOM `INDI` element for the individual.
@@ -274,10 +275,10 @@ def process_individual_events(element, name, dates, individual_details):
         individual_details (dict): A dictionary to store birth and death years for the individual.
     """
     individual_id = element.get_pointer()
-    # Only events we want notifications for (no IMMI/EMIG/NATU etc.)
+    # Only birthdays and yahrzeits
     individual_event_tags = [
-        "BIRT", "DEAT", "BARM", "BASM",
-        # Other GEDCOM tags intentionally omitted: IMMI, EMIG, NATU, CHR, BURI,
+        "BIRT", "DEAT",
+        # Intentionally omitted: BARM, BASM, IMMI, EMIG, NATU, CHR, BURI,
         # CREM, ADOP, BAPM, BLES, CHRA, CONF, FCOM, GRAD, ORDN, RETI, PROB, WILL, EVEN
     ]
     for child in element.get_child_elements():
