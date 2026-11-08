@@ -170,12 +170,12 @@ class TestMain(unittest.TestCase):
         # Generate the issue body in English
         issue_body = build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold, person_id, parser, individual_details, {}, lang="en")
 
-        # Assertions
+        # Assertions — main person name is a Markdown link to anafim; age is plain text after it
         self.assertIn("🎂", issue_body)
         self.assertIn("(age 34)", issue_body)
         self.assertIn("Upcoming Hebrew Dates", issue_body)
         self.assertIn("* **Event**: `Birthday`", issue_body)
-        self.assertIn("* **Person/Family**: `Jane Doe (age 34)`", issue_body)
+        self.assertIn("* **Person/Family**: [Jane Doe](https://baobabprince.github.io/anafim/?id=%40I1%40) (age 34)", issue_body)
         self.assertNotIn("🕯️", issue_body)
 
 if __name__ == '__main__':
