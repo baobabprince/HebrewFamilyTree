@@ -264,6 +264,9 @@ def process_individual_events(element, name, dates, individual_details):
     extraction. It also populates the `individual_details` dictionary with
     birth and death years.
 
+    Only life-cycle events that should generate notifications are processed.
+    Immigration / emigration / naturalization (IMMI, EMIG, NATU) are excluded.
+
     Args:
         element (Element): The GEDCOM `INDI` element for the individual.
         name (str): The name of the individual.
@@ -271,10 +274,11 @@ def process_individual_events(element, name, dates, individual_details):
         individual_details (dict): A dictionary to store birth and death years for the individual.
     """
     individual_id = element.get_pointer()
+    # Only events we want notifications for (no IMMI/EMIG/NATU etc.)
     individual_event_tags = [
-        "BIRT", "DEAT", "CHR", "BURI", "CREM", "ADOP", "BAPM",
-        "BARM", "BASM", "BLES", "CHRA", "CONF", "EMIG", "FCOM", "GRAD",
-        "IMMI", "NATU", "ORDN", "RETI", "PROB", "WILL", "EVEN"
+        "BIRT", "DEAT", "BARM", "BASM",
+        # Other GEDCOM tags intentionally omitted: IMMI, EMIG, NATU, CHR, BURI,
+        # CREM, ADOP, BAPM, BLES, CHRA, CONF, FCOM, GRAD, ORDN, RETI, PROB, WILL, EVEN
     ]
     for child in element.get_child_elements():
         if child.get_tag() in individual_event_tags:
