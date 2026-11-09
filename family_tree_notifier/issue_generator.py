@@ -12,14 +12,20 @@ def make_person_link(name, gedcom_id=None):
 
     Prefer ?id= when we have a real GEDCOM pointer; otherwise use ?q= with
     the display name so the deep-link search can still resolve the person.
+
+    For Google Contacts people (not in the GEDCOM tree), return plain text
+    with no link — they have no anafim branch page.
     """
     if not name:
         return name or ""
 
+    # Contacts outside the family tree: no anafim link
+    if isinstance(gedcom_id, str) and gedcom_id.startswith("people/"):
+        return str(name)
+
     use_id = (
         gedcom_id
         and isinstance(gedcom_id, str)
-        and not gedcom_id.startswith("people/")
         and "," not in gedcom_id
     )
     if use_id:
@@ -176,7 +182,8 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
     For yahrzeit (DEAT) events, parents' names are included when available.
 
     Only the main person name is rendered as a Markdown link to anafim
-    (GitHub Pages). Parents and path remain plain text.
+    (GitHub Pages) when the person is in the family tree. Contacts outside
+    the tree are shown as plain text with no link.
 
     Args:
         enriched_list (list): A list of tuples, where each tuple contains event
@@ -277,7 +284,7 @@ def build_issue_body(enriched_list, id2name, today_gregorian, distance_threshold
                     years_married = gregorian_date.year - marriage_year
                     age_str = get_translation(lang, "anniversary_married", years_married=years_married)
 
-        # Main person name → link to anafim (only this one)
+        # Main person name → link to anafim only for tree people
         linked_name = make_person_link(name, gedcom_id)
 
         issue_body += get_translation(lang, "event_header", emoji=emoji, hebrew_weekday=hebrew_weekday, original_date_str_parsed=original_date_str_parsed)
