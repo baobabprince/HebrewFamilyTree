@@ -7,6 +7,7 @@ on:
 
 jobs:
   repo-sync:
+    if: github.repository == 'baobabprince/familytree'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
