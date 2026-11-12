@@ -35,6 +35,7 @@ permissions:
 
 jobs:
   check_and_run:
+    if: github.repository == 'baobabprince/familytree'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
